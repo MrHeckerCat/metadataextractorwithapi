@@ -1,23 +1,28 @@
-$(document).ready(function() {
-    $('#extractButton').click(function() {
-        const imageUrl = $('#imageUrl').val();
+async function extractMetadata(url) {
+  const rapidApiKey = '06ffe64853msh9fbb527a0d94413p1b7f36jsnf81210f6b88a';
+  const rapidApiHost = 'metadata-extractor.p.rapidapi.com';
 
-        const settings = {
-            // ... (Your API settings as provided) ...
-            url: 'https://metadata-extractor.p.rapidapi.com/?url=' + encodeURIComponent(imageUrl) 
-        };
+  const settings = {
+    method: 'GET',
+    headers: {
+      'X-RapidAPI-Key': rapidApiKey,
+      'X-RapidAPI-Host': rapidApiHost,
+    },
+  };
 
-        $.ajax(settings).done(function (response) {
-            // Clear previous results
-            $('#results').empty(); 
+  try {
+    const response = await fetch(`https://metadata-extractor.p.rapidapi.com/?url=${encodeURIComponent(url)}`, settings);
+    const data = await response.json();
 
-            // Display results neatly
-            for (const key in response) {
-                $('#results').append(`<p><strong>${key}:</strong> ${response[key]}</p>`);
-            }
-        }).fail(function(error) {
-            console.error("Error:", error);
-            $('#results').text("An error occurred while fetching metadata."); 
-        });
-    });
-});
+    if (response.ok) {
+      console.log(data);
+    } else {
+      console.error(data.error);
+    }
+  } catch (error) {
+    console.error('Error fetching metadata:', error);
+  }
+}
+
+// Example usage
+extractMetadata('https://img.photographyblog.com/reviews/dji_mavic_air/photos/dji_mavic_air_06.jpg');
