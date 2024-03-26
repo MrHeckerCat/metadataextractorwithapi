@@ -20,7 +20,7 @@
         <input type="text" id="imageUrl" placeholder="Enter Image URL">
         <button id="extractButton">Extract Metadata</button>
         <div id="results">
-            <pre></pre>
+            <div><pre></pre></div>
         </div>
     </div>
 
@@ -52,7 +52,7 @@
                 .then((data) => {
                     if (response.ok) {
                         // Display the metadata in the output box
-                        $("#results pre").text(JSON.stringify(data, null, 4));
+                        $("#results pre").html(JSON.stringify(data, null, 4).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"));
                     } else {
                         console.error(data.error);
                     }
