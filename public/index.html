@@ -4,34 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Metadata Extractor</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        #results pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 12px;
+            height: 200px;
+            overflow: auto;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <h1>Image Metadata Extractor</h1>
         <input type="text" id="imageUrl" placeholder="Enter Image URL">
         <button id="extractButton">Extract Metadata</button>
-        <pre id="results"></pre>
+        <div id="results">
+            <pre></pre>
+        </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
     <script src="script.js"></script>
 
     <script>
-        // Add the event listener to the "Extract Metadata" button
         $("#extractButton").on("click", function () {
             // Get the URL from the input field
             const imageUrl = $("#imageUrl").val();
 
-            // Request the metadata with the given URL
-            extractMetadata(imageUrl);
+            // Request the metadata from the API
+            requestMetadata(imageUrl);
         });
 
-        // Replace the "console.log" statements with DOM updating
-        function extractMetadata(url) {
+        function requestMetadata(url) {
             const rapidApiKey = '06ffe64853msh9fbb527a0d94413p1b7f36jsnf81210f6b88a';
             const rapidApiHost = 'metadata-extractor.p.rapidapi.com';
-
             const settings = {
                 method: 'GET',
                 headers: {
@@ -40,23 +47,19 @@
                 },
             };
 
-            try {
-                fetch(`https://metadata-extractor.p.rapidapi.com/?url=${encodeURIComponent(url)}`, settings)
-                    .then((response) => response.json())
-                    .then((data) => {
-                        if (response.ok) {
-                            // Display the metadata in the "results" div
-                            $("#results").text(JSON.stringify(data, null, 4));
-                        } else {
-                            console.error(data.error);
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('Error fetching metadata:', error);
-                    });
-            } catch (error) {
-                console.error('Error fetching metadata:', error);
-            }
+            fetch(`https://metadata-extractor.p.rapidapi.com/?url=${encodeURIComponent(url)}`, settings)
+                .then((response) => response.json())
+                .then((data) => {
+                    if (response.ok) {
+                        // Display the metadata in the output box
+                        $("#results pre").text(JSON.stringify(data, null, 4));
+                    } else {
+                        console.error(data.error);
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error fetching metadata:', error);
+                });
         }
     </script>
 </body>
