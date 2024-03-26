@@ -1,0 +1,17 @@
+{
+  "name": "imagedataexctractor",
+  "version": "1.0.0",
+  "description": "imagedataexctractorwithapi",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.3"
+  },
+  "keywords": [
+    "your-project-keywords"
+  ],
+  "author": "MrHackerCat",
+  "license": "MIT"
+}
