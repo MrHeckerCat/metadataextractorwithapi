@@ -8,7 +8,7 @@ $(document).ready(function () {
     });
 
     function requestMetadata(url) {
-        const rapidApiKey = '06ffe64853msh9fbb527a0d94413p1b7f36jsnf81210f6b88a';
+        const rapidApiKey = '4da17a7022msh495ad0a68eb0428p13ecb3jsn314cfa75b62c';
         const rapidApiHost = 'metadata-extractor.p.rapidapi.com';
         const settings = {
             method: 'GET',
