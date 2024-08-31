@@ -93,7 +93,7 @@
         <p>Find and extract image metadata</p>
         <input type="text" placeholder="Enter your URL here">
         <button id="checkMetadata">Check metadata</button>
-        <div id="results" class="metadata-box"></div>
+        <div class="metadata-box" id="metadataOutput"></div>
         <p>Reveal data that is stored in your files, such as size, date of the last change, and the applications that were involved in the creation process.</p>
         
         <div class="faq">
@@ -124,14 +124,7 @@
         </footer>
     </div>
 
-    <script>
-        document.querySelectorAll('.faq-question').forEach(question => {
-            question.addEventListener('click', () => {
-                const answer = question.nextElementSibling;
-                answer.style.display = answer.style.display === 'none' ? 'block' : 'none';
-            });
-        });
-    </script>
+
     <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
     <script src="script.js"></script>
 </body>
