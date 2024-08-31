@@ -40,8 +40,12 @@ function requestMetadata(url) {
 // Function to display metadata
 function displayMetadata(metadata) {
     const metadataOutput = document.getElementById('metadataOutput');
+    const copyButton = document.getElementById('copyMetadata');
     if (metadataOutput) {
         metadataOutput.innerHTML = '<pre>' + JSON.stringify(metadata, null, 2) + '</pre>';
+        if (copyButton) {
+            copyButton.style.display = 'block';
+        }
     } else {
         console.error('Metadata output element not found');
     }
@@ -50,8 +54,12 @@ function displayMetadata(metadata) {
 // Function to display error messages
 function displayError(message) {
     const metadataOutput = document.getElementById('metadataOutput');
+    const copyButton = document.getElementById('copyMetadata');
     if (metadataOutput) {
         metadataOutput.innerHTML = '<p style="color: red;">' + message + '</p>';
+        if (copyButton) {
+            copyButton.style.display = 'none';
+        }
     } else {
         console.error('Metadata output element not found');
     }
@@ -72,6 +80,22 @@ function handleMetadataExtraction() {
     }
 }
 
+// Function to copy metadata to clipboard
+function copyMetadata() {
+    const metadataOutput = document.getElementById('metadataOutput');
+    if (metadataOutput) {
+        const metadataText = metadataOutput.innerText;
+        navigator.clipboard.writeText(metadataText).then(() => {
+            alert('Metadata copied to clipboard!');
+        }).catch(err => {
+            console.error('Failed to copy metadata: ', err);
+            alert('Failed to copy metadata. Please try again.');
+        });
+    } else {
+        console.error('Metadata output element not found');
+    }
+}
+
 // Event listeners
 document.addEventListener('DOMContentLoaded', () => {
     toggleFAQ();
@@ -80,5 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
         checkMetadataButton.addEventListener('click', handleMetadataExtraction);
     } else {
         console.error('Check metadata button not found');
+    }
+
+    const copyMetadataButton = document.getElementById('copyMetadata');
+    if (copyMetadataButton) {
+        copyMetadataButton.addEventListener('click', copyMetadata);
+    } else {
+        console.error('Copy metadata button not found');
     }
 });
