@@ -40,27 +40,45 @@ function requestMetadata(url) {
 // Function to display metadata
 function displayMetadata(metadata) {
     const metadataOutput = document.getElementById('metadataOutput');
-    metadataOutput.innerHTML = '<pre>' + JSON.stringify(metadata, null, 2) + '</pre>';
+    if (metadataOutput) {
+        metadataOutput.innerHTML = '<pre>' + JSON.stringify(metadata, null, 2) + '</pre>';
+    } else {
+        console.error('Metadata output element not found');
+    }
 }
 
 // Function to display error messages
 function displayError(message) {
     const metadataOutput = document.getElementById('metadataOutput');
-    metadataOutput.innerHTML = '<p style="color: red;">' + message + '</p>';
+    if (metadataOutput) {
+        metadataOutput.innerHTML = '<p style="color: red;">' + message + '</p>';
+    } else {
+        console.error('Metadata output element not found');
+    }
 }
 
 // Main function to handle metadata extraction
 function handleMetadataExtraction() {
-    const imageUrl = document.getElementById('imageUrl').value;
-    if (imageUrl) {
-        requestMetadata(imageUrl);
+    const imageUrlInput = document.getElementById('imageUrl');
+    if (imageUrlInput) {
+        const imageUrl = imageUrlInput.value;
+        if (imageUrl) {
+            requestMetadata(imageUrl);
+        } else {
+            displayError('Please enter a valid image URL');
+        }
     } else {
-        displayError('Please enter a valid image URL');
+        console.error('Image URL input element not found');
     }
 }
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', () => {
     toggleFAQ();
-    document.getElementById('checkMetadata').addEventListener('click', handleMetadataExtraction);
+    const checkMetadataButton = document.getElementById('checkMetadata');
+    if (checkMetadataButton) {
+        checkMetadataButton.addEventListener('click', handleMetadataExtraction);
+    } else {
+        console.error('Check metadata button not found');
+    }
 });
