@@ -17,16 +17,22 @@
             margin: 0;
         }
         .container {
-            max-width: 800px;
+            width: 95%;
+            max-width: 1200px;
             margin: 0 auto;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            background-color: #fff;
             padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
         h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
+            color: #333;
+            position: sticky;
+            top: 0;
+            background-color: #fff;
+            padding: 10px 0;
+            margin-top: 0;
+            z-index: 1000;
         }
         p {
             color: #666;
@@ -39,6 +45,7 @@
             margin-bottom: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
+            box-sizing: border-box;
         }
         button {
             background-color: #7c83fd;
@@ -50,11 +57,15 @@
             width: 100%;
         }
         .metadata-box {
+            background-color: #f9f9f9;
             border: 1px solid #ddd;
-            border-radius: 4px;
             padding: 10px;
-            min-height: 100px;
             margin-top: 20px;
+            overflow-x: auto;
+        }
+        .metadata-box pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
         .faq {
             margin-top: 30px;
