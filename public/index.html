@@ -3,29 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Metadata Extractor</title>
+    <title>Free Image Metadata Extractor</title>
+    <meta name="description" content="Unlock the potential of your images with our advanced image data extractor web app. Easily extract text, metadata, and insights from images in seconds.Try it now for free!">
     <style>
-        #results pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            width: 350px;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #7c83fd;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .metadata-box {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            min-height: 100px;
+            margin-top: 20px;
+        }
+        .faq {
+            margin-top: 30px;
+        }
+        .faq-item {
+            margin-bottom: 10px;
+        }
+        .faq-question {
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .faq-answer {
+            display: none;
+            margin-top: 5px;
+            padding-left: 15px;
+        }
+        .social-icons {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .social-icons a {
+            margin: 0 10px;
+            color: #666;
+            text-decoration: none;
+        }
+        footer {
+            text-align: center;
             font-size: 12px;
-            height: 200px;
-            overflow: auto;
+            color: #666;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Image Metadata Extractor</h1>
-        <input type="text" id="imageUrl" placeholder="Enter Image URL">
-        <button id="extractButton">Extract Metadata</button>
-        <div id="results">
-            <div><pre></pre></div>
+        <p>Find and extract image metadata</p>
+        <input type="text" placeholder="Enter your URL here">
+        <button>Check metadata</button>
+        <div class="metadata-box"></div>
+        <p>Reveal data that is stored in your files, such as size, date of the last change, and the applications that were involved in the creation process.</p>
+        
+        <div class="faq">
+            <h2>Frequently Asked Questions</h2>
+            <div class="faq-item">
+                <div class="faq-question">How do I use this tool?</div>
+                <div class="faq-answer">Enter the URL of an image in the input field and click "Check metadata" to extract the metadata.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">What type of metadata can I find?</div>
+                <div class="faq-answer">You can find information such as image size, creation date, camera settings, and more, depending on the image.</div>
+            </div>
+            <div class="faq-item">
+                <div class="faq-question">Is it possible to extract metadata from any image?</div>
+                <div class="faq-answer">Most digital images contain some form of metadata, but the amount and type of information can vary depending on the image source and format.</div>
+            </div>
         </div>
+        
+        <div class="social-icons">
+            <a href="#">f</a>
+            <a href="#">i</a>
+            <a href="#">t</a>
+            <a href="#">g</a>
+        </div>
+        
+        <footer>
+            © 2024 Image Metadata Extractor, Inc. All rights reserved.
+        </footer>
     </div>
 
+    <script>
+        document.querySelectorAll('.faq-question').forEach(question => {
+            question.addEventListener('click', () => {
+                const answer = question.nextElementSibling;
+                answer.style.display = answer.style.display === 'none' ? 'block' : 'none';
+            });
+        });
+    </script>
     <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
     <script src="script.js"></script>
-
 </body>
 </html>
+
+    
+
+
