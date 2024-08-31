@@ -1,38 +1,66 @@
-$(document).ready(function () {
-    $("#extractButton").on("click", function () {
-        // Get the URL from the input field
-        const imageUrl = $("#imageUrl").val();
-
-        // Request the metadata from the API
-        requestMetadata(imageUrl);
+// Function to toggle FAQ answers
+function toggleFAQ() {
+    const faqQuestions = document.querySelectorAll('.faq-question');
+    faqQuestions.forEach(question => {
+        question.addEventListener('click', () => {
+            const answer = question.nextElementSibling;
+            answer.style.display = answer.style.display === 'none' ? 'block' : 'none';
+        });
     });
+}
 
-    function requestMetadata(url) {
-        const rapidApiKey = '4da17a7022msh495ad0a68eb0428p13ecb3jsn314cfa75b62c';
-        const rapidApiHost = 'metadata-extractor.p.rapidapi.com';
-        const settings = {
-            method: 'GET',
-            headers: {
-                'X-RapidAPI-Key': rapidApiKey,
-                'X-RapidAPI-Host': rapidApiHost,
-            },
-        };
+// Function to request metadata from the API
+function requestMetadata(url) {
+    const rapidApiKey = '4da17a7022msh495ad0a68eb0428p13ecb3jsn314cfa75b62c';
+    const rapidApiHost = 'metadata-extractor.p.rapidapi.com';
+    const settings = {
+        method: 'GET',
+        headers: {
+            'X-RapidAPI-Key': rapidApiKey,
+            'X-RapidAPI-Host': rapidApiHost,
+        },
+    };
 
-        fetch(`https://metadata-extractor.p.rapidapi.com/?url=${encodeURIComponent(url)}`, settings)
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error('Error fetching metadata: ' + response.statusText);
-                }
+    fetch(`https://metadata-extractor.p.rapidapi.com/?url=${encodeURIComponent(url)}`, settings)
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error('Error fetching metadata: ' + response.statusText);
+            }
+            return response.json();
+        })
+        .then((data) => {
+            displayMetadata(data);
+        })
+        .catch((error) => {
+            console.error(error);
+            displayError('An error occurred while fetching metadata. Please try again.');
+        });
+}
 
-                // Parse the JSON
-                return response.json();
-            })
-            .then((data) => {
-                // Display the metadata in the output box
-                $("#results pre").html(JSON.stringify(data, null, 4).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"));
-            })
-            .catch((error) => {
-                console.error(error);
-            });
+// Function to display metadata
+function displayMetadata(metadata) {
+    const metadataOutput = document.getElementById('metadataOutput');
+    metadataOutput.innerHTML = '<pre>' + JSON.stringify(metadata, null, 2) + '</pre>';
+}
+
+// Function to display error messages
+function displayError(message) {
+    const metadataOutput = document.getElementById('metadataOutput');
+    metadataOutput.innerHTML = '<p style="color: red;">' + message + '</p>';
+}
+
+// Main function to handle metadata extraction
+function handleMetadataExtraction() {
+    const imageUrl = document.getElementById('imageUrl').value;
+    if (imageUrl) {
+        requestMetadata(imageUrl);
+    } else {
+        displayError('Please enter a valid image URL');
     }
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    toggleFAQ();
+    document.getElementById('checkMetadata').addEventListener('click', handleMetadataExtraction);
 });
