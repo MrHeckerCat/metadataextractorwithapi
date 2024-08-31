@@ -21,9 +21,19 @@
             max-width: 1200px;
             margin: 0 auto;
             background-color: #fff;
-            padding: 20px;
             border-radius: 5px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .fixed-header {
+            position: sticky;
+            top: 0;
+            background-color: #fff;
+            padding: 20px;
+            z-index: 1000;
+            border-bottom: 1px solid #ddd;
         }
         h1 {
             color: #333;
@@ -55,6 +65,14 @@
             border-radius: 4px;
             cursor: pointer;
             width: 100%;
+        }
+         button:hover {
+            background-color: #45a049;
+        }
+        .scrollable-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
         }
         .metadata-box {
             background-color: #f9f9f9;
@@ -112,10 +130,14 @@
 </head>
 <body>
     <div class="container">
+        <div class="fixed-header">
         <h1>Image Metadata Extractor</h1>
         <p>Find and extract image metadata</p>
         <input type="text" id="imageUrl" placeholder="Enter your URL here">
         <button id="checkMetadata">Check metadata</button>
+        </div>
+         </div>
+    <div class="scrollable-content">
         <div id="metadataOutput"></div>
         <button id="copyMetadata" class="copy-button" style="display: none;">Copy Metadata</button>
         <p>Reveal data that is stored in your files, such as size, date of the last change, and the applications that were involved in the creation process.</p>
@@ -142,7 +164,7 @@
             <a href="#" title="Instagram"><i class="fab fa-instagram"></i></a>
             <a href="#" title="LinkedIn"><i class="fab fa-linkedin"></i></a>
         </div>
-        
+    </div>
         <footer>
             © 2024 Image Metadata Extractor, Inc. All rights reserved.
         </footer>
