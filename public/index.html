@@ -137,6 +137,50 @@
             width: 100%;
             box-sizing: border-box;
         }
+         /* Hamburger menu styles */
+        .menu-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            cursor: pointer;
+            z-index: 1001;
+        }
+        .hamburger {
+            width: 30px;
+            height: 3px;
+            background-color: #333;
+            margin: 6px 0;
+            transition: 0.4s;
+        }
+        .nav-menu {
+            position: fixed;
+            top: 0;
+            right: -250px;
+            width: 250px;
+            height: 100%;
+            background-color: #f4f4f4;
+            padding-top: 60px;
+            transition: 0.4s;
+            z-index: 1000;
+        }
+        .nav-menu.active {
+            right: 0;
+        }
+        .nav-menu ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .nav-menu ul li {
+            padding: 15px 20px;
+        }
+        .nav-menu ul li a {
+            color: #333;
+            text-decoration: none;
+            font-size: 18px;
+        }
+        .nav-menu ul li a:hover {
+            color: #7c83fd;
+        }
         @media (max-width: 600px) {
     .page-wrapper {
         box-shadow: none;
@@ -163,6 +207,11 @@
 <body>
     <div class="page-wrapper">
         <div class="fixed-header">
+            <div class="menu-toggle" id="menuToggle">
+                <div class="hamburger"></div>
+                <div class="hamburger"></div>
+                <div class="hamburger"></div>
+            </div>
         <h1>Image Metadata Extractor</h1>
         <p>Find and extract image metadata</p>
         <div class="input-group">
@@ -170,6 +219,12 @@
         <button id="checkMetadata">Check metadata</button>
         </div>
     </div>
+        <nav class="nav-menu" id="navMenu">
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/blog">Blog</a></li>
+            </ul>
+        </nav>
     <div class="scrollable-content">
         <div id="metadataOutput"></div>
         <button id="copyMetadata" class="copy-button" style="display: none;">Copy Metadata</button>
