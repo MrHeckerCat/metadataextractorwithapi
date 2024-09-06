@@ -16,7 +16,7 @@ app.get('/terms', (req, res) => {
 });
 
 // Route for the Privacy Policy page
-app.get('/terms', (req, res) => {
+app.get('/privacy', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
 });
 
