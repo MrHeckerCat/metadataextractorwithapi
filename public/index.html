@@ -18,6 +18,35 @@
 </script>
 
     <style>
+        /* Hamburger menu styles */
+.menu-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    cursor: pointer;
+    z-index: 1001;
+}
+.hamburger {
+    width: 30px;
+    height: 3px;
+    background-color: #333;
+    margin: 6px 0;
+    transition: 0.4s;
+}
+.nav-menu {
+    position: fixed;
+    top: 0;
+    right: -250px;
+    width: 250px;
+    height: 100%;
+    background-color: #f4f4f4;
+    padding-top: 60px;
+    transition: 0.4s;
+    z-index: 1000;
+}
+.nav-menu.active {
+    right: 0;
+}
           body {
             font-family: Arial, sans-serif;
             line-height: 1.6;
@@ -42,7 +71,7 @@
             position: sticky;
             top: 0;
             background-color: #fff;
-            padding: 20px;
+            padding: 60px;
             z-index: 1000;
             border-bottom: 1px solid #ddd;
             width: 100%;
@@ -160,6 +189,20 @@
 }
     </style>
 </head>
+    <!-- Hamburger Menu Toggle -->
+<div class="menu-toggle" id="menuToggle">
+    <div class="hamburger"></div>
+    <div class="hamburger"></div>
+    <div class="hamburger"></div>
+</div>
+
+<!-- Navigation Menu -->
+<nav class="nav-menu" id="navMenu">
+    <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/blog">Blog</a></li>
+    </ul>
+</nav>
 <body>
     <div class="page-wrapper">
         <div class="fixed-header">
