@@ -193,6 +193,14 @@
 
 <body>
     <div class="page-wrapper">
+        <div class="fixed-header">
+        <h1>Image Metadata Extractor</h1>
+        <p>Find and extract image metadata</p>
+        <div class="input-group">
+        <input type="text" id="imageUrl" placeholder="Enter your URL here">
+        <button id="checkMetadata">Check metadata</button>
+        </div>
+    </div>
         <div class="menu-toggle" id="menuToggle">
     <div class="hamburger"></div>
     <div class="hamburger"></div>
@@ -206,14 +214,6 @@
         <li><a href="/blog">Blog</a></li>
     </ul>
 </nav>
-        <div class="fixed-header">
-        <h1>Image Metadata Extractor</h1>
-        <p>Find and extract image metadata</p>
-        <div class="input-group">
-        <input type="text" id="imageUrl" placeholder="Enter your URL here">
-        <button id="checkMetadata">Check metadata</button>
-        </div>
-    </div>
     <div class="scrollable-content">
         <div id="metadataOutput"></div>
         <button id="copyMetadata" class="copy-button" style="display: none;">Copy Metadata</button>
