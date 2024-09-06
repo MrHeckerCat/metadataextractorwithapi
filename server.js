@@ -11,7 +11,7 @@ app.get('/', (req, res) => {
 });
 
 // Route for the Terms of Use page
-app.get(['/terms', '/terms.html'], (req, res) => {
+app.get(['/terms'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'terms.html'));
 });
 
@@ -22,7 +22,7 @@ app.get('/privacy', (req, res) => {
 
 // Catch-all route for any undefined routes
 app.use((req, res) => {
-  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+  res.status(404).sendFile(path.join(__dirname, 'public', '404-page.html'));
 });
 
 // Listen to the App Engine-specified port, or 8080 otherwise
