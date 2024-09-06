@@ -18,35 +18,6 @@
 </script>
 
     <style>
-        /* Hamburger menu styles */
-.menu-toggle {
-    position: absolute;
-    top: 20px;
-    right: 10px;
-    cursor: pointer;
-    z-index: 1001;
-}
-.hamburger {
-    width: 30px;
-    height: 3px;
-    background-color: #333;
-    margin: 6px 0;
-    transition: 0.4s;
-}
-.nav-menu {
-    position: fixed;
-    top: 0;
-    right: -150px;
-    width: 250px;
-    height: 100%;
-    background-color: #f4f4f4;
-    padding-top: 60px;
-    transition: 0.4s;
-    z-index: 1000;
-}
-.nav-menu.active {
-    right: 0;
-}
           body {
             font-family: Arial, sans-serif;
             line-height: 1.6;
@@ -68,15 +39,56 @@
             flex-grow: 1;
         }
         .fixed-header {
-            position: sticky;
-            top: 0;
-            background-color: #fff;
-            padding: 60px;
-            z-index: 1000;
-            border-bottom: 1px solid #ddd;
-            width: 100%;
-            box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #ddd;
+}
+.header-content {
+    flex-grow: 1;
+}
+.menu-toggle {
+    cursor: pointer;
+    margin-right: 20px;
+    z-index: 1001;
+}
+ .hamburger {
+            width: 30px;
+            height: 3px;
+            background-color: #333;
+            margin: 6px 0;
+            transition: 0.4s;
         }
+        .nav-menu {
+            position: fixed;
+            top: 0;
+            left: -250px;
+            width: 250px;
+            height: 100%;
+            background-color: #f4f4f4;
+            padding-top: 60px;
+            transition: 0.4s;
+            z-index: 1000;
+        }
+        .nav-menu.active {
+            left: 0;
+        }
+        .nav-menu ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .nav-menu ul li {
+            padding: 15px 20px;
+        }
+        .nav-menu ul li a {
+            color: #333;
+            text-decoration: none;
+            font-size: 18px;
+        }
+        .nav-menu ul li a:hover {
+            color: #7c83fd;
+        }
+            
         h1 {
             color: #333;
             margin-top: 0;
@@ -167,7 +179,16 @@
             box-sizing: border-box;
         }
         @media (max-width: 600px) {
-    .page-wrapper {
+    .fixed-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .menu-toggle {
+                align-self: flex-start;
+                margin-bottom: 10px;
+            }
+        }
+            .page-wrapper {
         box-shadow: none;
     }
     .fixed-header, .scrollable-content {
@@ -189,11 +210,21 @@
 }
     </style>
 </head>
-    <!-- Hamburger Menu Toggle -->
-
 <body>
     <div class="page-wrapper">
         <div class="fixed-header">
+            <div class="menu-toggle" id="menuToggle">
+    <div class="hamburger"></div>
+    <div class="hamburger"></div>
+    <div class="hamburger"></div>
+</div>
+<nav class="nav-menu" id="navMenu">
+    <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/blog">Blog</a></li>
+    </ul>
+</nav>
+        <div class="header-content">    
         <h1>Image Metadata Extractor</h1>
         <p>Find and extract image metadata</p>
         <div class="input-group">
@@ -201,19 +232,7 @@
         <button id="checkMetadata">Check metadata</button>
         </div>
     </div>
-        <div class="menu-toggle" id="menuToggle">
-    <div class="hamburger"></div>
-    <div class="hamburger"></div>
-    <div class="hamburger"></div>
 </div>
-
-<!-- Navigation Menu -->
-<nav class="nav-menu" id="navMenu">
-    <ul>
-        <li><a href="/">Home</a></li>
-        <li><a href="/blog">Blog</a></li>
-    </ul>
-</nav>
     <div class="scrollable-content">
         <div id="metadataOutput"></div>
         <button id="copyMetadata" class="copy-button" style="display: none;">Copy Metadata</button>
