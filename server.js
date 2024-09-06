@@ -11,7 +11,7 @@ app.get('/', (req, res) => {
 });
 
 // Route for the Terms of Use page
-app.get('/terms', (req, res) => {
+app.get(['/terms', '/terms.html'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'terms.html'));
 });
 
