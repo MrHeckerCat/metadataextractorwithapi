@@ -22,7 +22,7 @@ app.get('/privacy', (req, res) => {
 
 // Catch-all route for any undefined routes
 app.use((req, res) => {
-  res.status(404).sendFile(path.join(__dirname, 'public', '404-page.html'));
+  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
 });
 
 // Listen to the App Engine-specified port, or 8080 otherwise
