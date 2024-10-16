@@ -49,28 +49,52 @@ async function handleFileUpload(file) {
     }
 
     try {
+        // Show loading state
+        displayLoading('Uploading image...');
+
         // Create FormData object
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('image', file);  // Changed 'file' to 'image' to match API expectations
 
-        // First upload to Vercel blob storage
-        const uploadResponse = await fetch('/api/upload', {
+        // Upload to your API endpoint
+        const uploadResponse = await fetch('https://imagedataextract.com/api/upload', {
             method: 'POST',
             body: formData
         });
 
         if (!uploadResponse.ok) {
-            throw new Error('Error uploading file');
+            throw new Error(`Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
         }
 
-        const { url } = await uploadResponse.json();
+        const uploadData = await uploadResponse.json();
         
-        // Now get metadata using the uploaded file URL
-        await requestMetadata(url);
+        // Check if we have the image URL in the response
+        if (uploadData.url) {
+            // Now get metadata using the uploaded file URL
+            await requestMetadata(uploadData.url);
+        } else {
+            throw new Error('Upload successful but no URL returned');
+        }
         
     } catch (error) {
         console.error('Upload error:', error);
-        displayError('Failed to upload file. Please try again.');
+        displayError(`Upload failed: ${error.message}`);
+    }
+}
+
+// Function to display loading state
+function displayLoading(message) {
+    const metadataOutput = document.getElementById('metadataOutput');
+    const copyButton = document.getElementById('copyMetadata');
+    if (metadataOutput) {
+        metadataOutput.innerHTML = `
+            <div class="loading">
+                <p>${message}</p>
+                <div class="loading-spinner"></div>
+            </div>`;
+        if (copyButton) {
+            copyButton.style.display = 'none';
+        }
     }
 }
 
