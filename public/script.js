@@ -54,16 +54,20 @@ async function handleFileUpload(file) {
 
         // Create FormData object
         const formData = new FormData();
-        formData.append('image', file);  // Changed 'file' to 'image' to match API expectations
+        formData.append('file', file);
 
-        // Upload to your API endpoint
-        const uploadResponse = await fetch('https://imagedataextract.com/api/upload', {
+        // Get the current domain
+        const currentDomain = window.location.origin;
+        
+        // Upload to your Vercel API endpoint
+        const uploadResponse = await fetch(`${currentDomain}/api/upload`, {
             method: 'POST',
             body: formData
         });
 
         if (!uploadResponse.ok) {
-            throw new Error(`Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
+            const errorData = await uploadResponse.json();
+            throw new Error(errorData.error || `Upload failed: ${uploadResponse.status}`);
         }
 
         const uploadData = await uploadResponse.json();
