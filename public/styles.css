@@ -169,6 +169,19 @@
 .nav-menu ul li a:hover {
     color: #7c83fd;
 }
+.drop-zone {
+    border: 2px dashed #ccc;
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    margin: 20px 0;
+    transition: all 0.3s ease;
+}
+
+.drop-zone.dragover {
+    background-color: #e1e1e1;
+    border-color: #999;
+}
         @media (max-width: 600px) {
      @media (max-width: 600px) {
     .menu-toggle {
