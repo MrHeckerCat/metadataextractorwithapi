@@ -35,7 +35,7 @@ async function requestMetadata(url) {
 }
 
 async function handleFileUpload(file) {
-    // Check if file is an image
+    // Check if the file is an image
     if (!file.type.startsWith('image/')) {
         displayError('Please upload an image file');
         return;
@@ -51,41 +51,26 @@ async function handleFileUpload(file) {
         // Show loading state
         displayLoading('Uploading image...');
 
-        // Create FormData object
-        const formData = new FormData();
-        formData.append('file', file);
-
         // Get the current domain
         const currentDomain = window.location.origin;
-        
+
+        // Use the file name for the query parameter
+        const filename = encodeURIComponent(file.name);
+
         // Upload to your Vercel API endpoint
         const uploadResponse = await fetch(`/api/upload?filename=${filename}`, {
             method: 'POST',
-            body: formData
+            body: file, // Pass the file directly
         });
 
-        // First check if the response is ok
+        // First, check if the response is ok
         if (!uploadResponse.ok) {
             throw new Error(`Upload failed with status: ${uploadResponse.status}`);
         }
 
-        // Get the response text first
-        const responseText = await uploadResponse.text();
+        // Parse the response
+        const uploadData = await uploadResponse.json();
 
-        // Check if the response is empty
-        if (!responseText) {
-            throw new Error('Server returned an empty response');
-        }
-
-        let uploadData;
-        try {
-            // Try to parse the response as JSON
-            uploadData = JSON.parse(responseText);
-        } catch (parseError) {
-            console.error('Response parsing error:', responseText);
-            throw new Error(`Failed to parse server response: ${parseError.message}`);
-        }
-        
         // Check if we have the image URL in the response
         if (!uploadData || !uploadData.url) {
             throw new Error('Upload response missing URL');
