@@ -21,8 +21,12 @@ export async function POST(request) {
       );
     }
 
+    // Read file data (convert the file to Blob or Buffer)
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
     // Upload to Vercel Blob
-    const blob = await put(file.name, file, {
+    const blob = await put(file.name, buffer, {
       access: 'public',
       contentType: file.type,
     });
