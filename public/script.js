@@ -59,7 +59,7 @@ async function handleFileUpload(file) {
         const currentDomain = window.location.origin;
         
         // Upload to your Vercel API endpoint
-        const uploadResponse = await fetch(`${currentDomain}/app/api/upload`, {
+        const uploadResponse = await fetch(`/api/upload?filename=${filename}`, {
             method: 'POST',
             body: formData
         });
