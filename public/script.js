@@ -58,7 +58,7 @@ async function handleFileUpload(file) {
         const filename = encodeURIComponent(file.name);
 
         // Upload to your Vercel API endpoint
-        const uploadResponse = await fetch(`/api/upload?filename=${filename}`, {
+        const uploadResponse = await fetch(`/app/api/upload?filename=${filename}`, {
             method: 'POST',
             body: file, // Pass the file directly
         });
