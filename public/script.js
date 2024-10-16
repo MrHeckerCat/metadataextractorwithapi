@@ -34,7 +34,6 @@ async function requestMetadata(url) {
     }
 }
 
-// Function to handle file upload
 async function handleFileUpload(file) {
     // Check if file is an image
     if (!file.type.startsWith('image/')) {
@@ -65,20 +64,35 @@ async function handleFileUpload(file) {
             body: formData
         });
 
+        // First check if the response is ok
         if (!uploadResponse.ok) {
-            const errorData = await uploadResponse.json();
-            throw new Error(errorData.error || `Upload failed: ${uploadResponse.status}`);
+            throw new Error(`Upload failed with status: ${uploadResponse.status}`);
         }
 
-        const uploadData = await uploadResponse.json();
+        // Get the response text first
+        const responseText = await uploadResponse.text();
+
+        // Check if the response is empty
+        if (!responseText) {
+            throw new Error('Server returned an empty response');
+        }
+
+        let uploadData;
+        try {
+            // Try to parse the response as JSON
+            uploadData = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('Response parsing error:', responseText);
+            throw new Error(`Failed to parse server response: ${parseError.message}`);
+        }
         
         // Check if we have the image URL in the response
-        if (uploadData.url) {
-            // Now get metadata using the uploaded file URL
-            await requestMetadata(uploadData.url);
-        } else {
-            throw new Error('Upload successful but no URL returned');
+        if (!uploadData || !uploadData.url) {
+            throw new Error('Upload response missing URL');
         }
+
+        // Now get metadata using the uploaded file URL
+        await requestMetadata(uploadData.url);
         
     } catch (error) {
         console.error('Upload error:', error);
