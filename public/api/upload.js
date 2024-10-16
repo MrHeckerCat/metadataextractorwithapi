@@ -1,4 +1,5 @@
 import { put } from '@vercel/blob';
+import { NextResponse } from 'next/server';
 
 export const config = {
   api: {
@@ -6,21 +7,43 @@ export const config = {
   },
 };
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
+export default async function POST(request) {
   try {
-    const blob = await put(req.body, {
+    // Get the file from the request
+    const formData = await request.formData();
+    const file = formData.get('file');
+
+    if (!file) {
+      return NextResponse.json(
+        { error: 'No file provided' },
+        { status: 400 }
+      );
+    }
+
+    // Verify file type
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json(
+        { error: 'File must be an image' },
+        { status: 400 }
+      );
+    }
+
+    // Upload to Vercel Blob
+    const blob = await put(file.name, file, {
       access: 'public',
+      contentType: file.type,
     });
 
-    return res.status(200).json({
+    return NextResponse.json({
       url: blob.url,
+      success: true
     });
+
   } catch (error) {
     console.error('Upload error:', error);
-    return res.status(500).json({ error: 'Error uploading file' });
+    return NextResponse.json(
+      { error: 'Error uploading file' },
+      { status: 500 }
+    );
   }
 }
