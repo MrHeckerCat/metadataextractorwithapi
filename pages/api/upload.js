@@ -1,6 +1,6 @@
-import formidable from 'formidable';
-import fs from 'fs';
-import path from 'path';
+import { NextResponse } from 'next/server';
+import { put } from '@vercel/blob';
+import { nanoid } from 'nanoid';
 
 export const config = {
   api: {
@@ -8,28 +8,25 @@ export const config = {
   },
 };
 
-export default async function handler(req, res) {
+export default async function handler(req) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
   }
 
-  const form = new formidable.IncomingForm();
-  form.uploadDir = path.join(process.cwd(), 'public', 'uploads');
-  form.keepExtensions = true;
+  try {
+    const formData = await req.formData();
+    const file = formData.get('file');
 
-  form.parse(req, (err, fields, files) => {
-    if (err) {
-      return res.status(500).json({ error: 'Error parsing form data' });
-    }
-
-    const file = files.file;
     if (!file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    const relativeFilePath = path.relative(process.cwd(), file.path);
-    const publicUrl = '/' + relativeFilePath.replace(/\\/g, '/');
+    const filename = `${nanoid()}-${file.name}`;
+    const { url } = await put(filename, file, { access: 'public' });
 
-    res.status(200).json({ url: publicUrl });
-  });
+    return NextResponse.json({ url });
+  } catch (error) {
+    console.error('Upload error:', error);
+    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+  }
 }
