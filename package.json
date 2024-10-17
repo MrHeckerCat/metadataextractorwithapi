@@ -4,9 +4,10 @@
   "description": "A web application for extracting metadata from images",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run clear-cache && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "clear-cache": "rm -rf .next/cache"
   },
   "dependencies": {
     "next": "^12.3.4",
