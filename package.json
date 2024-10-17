@@ -1,18 +1,28 @@
 {
-  "name": "imagedataexctractor",
+  "name": "image-metadata-extractor",
   "version": "1.0.0",
-  "description": "imagedataexctractorwithapi",
-  "main": "server.js",
+  "description": "A web application for extracting metadata from images",
+  "main": "index.js",
   "scripts": {
-    "start": "node server.js"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
-    "@vercel/blob": "^0.20.0",
-    "express": "^4.19.3"
+    "next": "^12.0.0",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "@vercel/blob": "^0.10.0",
+    "nanoid": "^3.1.30"
   },
-  "keywords": [
-    "your-project-keywords"
-  ],
-  "author": "MrHackerCat",
-  "license": "MIT"
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^12.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "author": "Your Name",
+  "license": "ISC"
 }
