@@ -59,7 +59,7 @@ export default function Home() {
       <Head>
         <title>Image Metadata Extractor</title>
         <meta name="description" content="Extract metadata from images" />
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="/favicon.svg" />
       </Head>
 
       <main className={styles.main}>
