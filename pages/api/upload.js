@@ -1,6 +1,4 @@
-import { NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
-import { nanoid } from 'nanoid';
 
 export const config = {
   api: {
@@ -8,25 +6,21 @@ export const config = {
   },
 };
 
-export default async function handler(req) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const formData = await req.formData();
-    const file = formData.get('file');
+    const filename = req.headers['x-vercel-filename'] || 'uploaded-file';
+    
+    const blob = await put(filename, req, {
+      access: 'public',
+    });
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
-    }
-
-    const filename = `${nanoid()}-${file.name}`;
-    const { url } = await put(filename, file, { access: 'public' });
-
-    return NextResponse.json({ url });
+    res.status(200).json(blob);
   } catch (error) {
     console.error('Upload error:', error);
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+    res.status(500).json({ error: 'Upload failed', details: error.message });
   }
 }
