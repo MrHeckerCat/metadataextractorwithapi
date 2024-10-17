@@ -5,17 +5,17 @@ const blogPosts = [
   {
     title: "Understanding EXIF Data",
     description: "Learn about EXIF data and how it affects your digital privacy.",
-    link: "#"
+    link: "/blog/exif-data"
   },
   {
     title: "Metadata and Copyright",
     description: "Explore the relationship between image metadata and copyright protection.",
-    link: "#"
+    link: "/blog/metadata-copyright"
   },
   {
     title: "Removing Sensitive Metadata",
     description: "Step-by-step guide on removing sensitive information from your images.",
-    link: "#"
+    link: "/blog/remove-metadata"
   }
 ];
 
@@ -29,9 +29,11 @@ export default function Blog() {
         {blogPosts.map((post, index) => (
           <div key={index} className={styles.blogTile}>
             <Link href={post.link}>
-              <h2>{post.title}</h2>
-              <p>{post.description}</p>
-              <span className={styles.readMore}>Read More →</span>
+              <a>
+                <h2>{post.title}</h2>
+                <p>{post.description}</p>
+                <span className={styles.readMore}>Read More →</span>
+              </a>
             </Link>
           </div>
         ))}
