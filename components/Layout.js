@@ -10,8 +10,8 @@ export default function Layout({ children }) {
       </Head>
       <header className={styles.fixedHeader}>
         <nav>
-          <Link href="/">Home</Link>
-          <Link href="/blog">Blog</Link>
+          <Link href="/"><a>Home</a></Link>
+          <Link href="/blog"><a>Blog</a></Link>
         </nav>
       </header>
       <main className={styles.scrollableContent}>{children}</main>
@@ -20,7 +20,7 @@ export default function Layout({ children }) {
           {/* Add social media icons here */}
         </div>
         <p>© 2024 Image Metadata Extractor. All rights reserved.</p>
-        <Link href="/terms">Terms of Use</Link> | <Link href="/privacy">Privacy Policy</Link>
+        <Link href="/terms"><a>Terms of Use</a></Link> | <Link href="/privacy"><a>Privacy Policy</a></Link>
       </footer>
     </div>
   );
