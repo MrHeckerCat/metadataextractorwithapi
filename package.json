@@ -2,7 +2,6 @@
   "name": "image-metadata-extractor",
   "version": "1.0.0",
   "description": "A web application for extracting metadata from images",
-  "main": "index.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -10,19 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "^12.0.0",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
+    "next": "^12.3.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "@vercel/blob": "^0.10.0",
-    "nanoid": "^3.1.30"
+    "nanoid": "^3.3.4"
   },
   "devDependencies": {
-    "eslint": "^8.0.0",
-    "eslint-config-next": "^12.0.0"
-  },
-  "engines": {
-    "node": ">=14.0.0"
-  },
-  "author": "Your Name",
-  "license": "ISC"
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^12.3.4"
+  }
 }
