@@ -13,29 +13,52 @@ export default function Home() {
     setError(null);
     setMetadata(null);
 
+    const imageUrl = event.target.imageUrl.value;
     const file = event.target.file.files[0];
-    if (!file) {
-      setError('Please select a file');
+
+    if (!imageUrl && !file) {
+      setError('Please enter an image URL or select a file');
       setLoading(false);
       return;
     }
 
     try {
-      const uploadResponse = await fetch('/api/upload', {
-        method: 'POST',
-        body: file,
-        headers: {
-          'x-vercel-filename': file.name,
-        },
-      });
+      let url;
+      if (file) {
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: file,
+          headers: {
+            'x-vercel-filename': file.name,
+          },
+        });
 
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json();
-        throw new Error(errorData.error || 'Upload failed');
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json();
+          throw new Error(errorData.error || 'Upload failed');
+        }
+
+        const blob = await uploadResponse.json();
+        url = blob.url;
+      } else {
+        url = imageUrl;
       }
 
-      const blob = await uploadResponse.json();
-      setMetadata({ url: blob.url });
+      const metadataResponse = await fetch('/api/metadata', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!metadataResponse.ok) {
+        const errorData = await metadataResponse.json();
+        throw new Error(errorData.error || 'Failed to fetch metadata');
+      }
+
+      const metadataData = await metadataResponse.json();
+      setMetadata(metadataData);
     } catch (error) {
       console.error('Error:', error);
       setError(error.message || 'An unexpected error occurred');
@@ -57,6 +80,13 @@ export default function Home() {
         <p className={styles.description}>Find and extract image metadata</p>
 
         <form onSubmit={handleMetadataExtraction} className={styles.form}>
+          <input
+            type="text"
+            name="imageUrl"
+            placeholder="Enter image URL"
+            className={styles.input}
+          />
+          <p className={styles.orText}>OR</p>
           <input type="file" name="file" className={styles.input} />
           <button type="submit" className={styles.button} disabled={loading}>
             {loading ? 'Processing...' : 'Check metadata'}
