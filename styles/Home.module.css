@@ -76,15 +76,36 @@
     margin-bottom: 20px;
     overflow-x: auto;
 }
+.metadata {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  padding: 20px;
+  margin-top: 20px;
+  border-radius: 4px;
+}
 
+.metadata pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
 .copyButton {
-    background-color: #7c83fd;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-top: 10px;
+  background-color: #7c83fd;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background-color 0.3s;
+}
+
+.copyButton:hover {
+  background-color: #6268ca;
+}
+
+.copyButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(124, 131, 253, 0.5);
 }
 
 .loading {
