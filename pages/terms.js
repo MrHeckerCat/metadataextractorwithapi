@@ -22,7 +22,7 @@ export default function Terms() {
           
           <p>We operate the website <Link href="https://imagedataextract.com/">https://imagedataextract.com/</Link> (the "Site"), as well as any other related products and services that refer or link to these legal terms (the "Legal Terms") (collectively, the "Services").</p>
           
-          <p>You can contact us by email at info@imagedataextract.com or by mail to __________, __________, __________.</p>
+          <p>You can contact us by email at info@imagedataextract.com </p>
           
           <p>These Legal Terms constitute a legally binding agreement made between you, whether personally or on behalf of an entity ("you"), and <Link href="https://imagedataextract.com/">https://imagedataextract.com/</Link>, concerning your access to and use of the Services. You agree that by accessing the Services, you have read, understood, and agreed to be bound by all of these Legal Terms. IF YOU DO NOT AGREE WITH ALL OF THESE LEGAL TERMS, THEN YOU ARE EXPRESSLY PROHIBITED FROM USING THE SERVICES AND YOU MUST DISCONTINUE USE IMMEDIATELY.</p>
           
@@ -38,11 +38,6 @@ export default function Terms() {
           <p><strong>info@imagedataextract.com</strong></p>
         </section>
       </main>
-
-      <footer className={styles.footer}>
-        <p>© 2024 Image Metadata Extractor. All rights reserved.</p>
-        <Link href="/privacy">Privacy Policy</Link>
-      </footer>
     </div>
   );
 }
