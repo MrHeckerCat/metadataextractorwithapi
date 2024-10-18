@@ -34,15 +34,9 @@ export default function Privacy() {
           <p>If you have questions or comments about this notice, you may email us at info@imagedataextract.com or contact us by post at:</p>
           
           <p><strong><Link href="https://imagedataextract.com/">https://imagedataextract.com/</Link></strong></p>
-          <p><strong>__________</strong></p>
-          <p><strong>__________</strong></p>
+    
         </section>
       </main>
-
-      <footer className={styles.footer}>
-        <p>© 2024 Image Metadata Extractor. All rights reserved.</p>
-        <Link href="/terms">Terms of Use</Link>
-      </footer>
     </div>
   );
 }
