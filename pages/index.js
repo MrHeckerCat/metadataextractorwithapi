@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import styles from '../styles/Home.module.css';
 
 export default function Home() {
@@ -8,7 +7,6 @@ export default function Home() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleMetadataExtraction = async (event) => {
     event.preventDefault();
@@ -19,15 +17,59 @@ export default function Home() {
     const imageUrl = event.target.imageUrl.value;
     const file = event.target.file.files[0];
 
-    // ... rest of the function remains the same
+    if (!imageUrl && !file) {
+      setError('Please enter an image URL or select a file');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      let url;
+      if (file) {
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: file,
+          headers: {
+            'x-vercel-filename': file.name,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json();
+          throw new Error(errorData.error || 'Upload failed');
+        }
+
+        const blob = await uploadResponse.json();
+        url = blob.url;
+      } else {
+        url = imageUrl;
+      }
+
+      const metadataResponse = await fetch('/api/metadata', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!metadataResponse.ok) {
+        const errorData = await metadataResponse.json();
+        throw new Error(errorData.error || 'Failed to fetch metadata');
+      }
+
+      const metadataData = await metadataResponse.json();
+      setMetadata(metadataData);
+    } catch (error) {
+      console.error('Error:', error);
+      setError(error.message || 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleFaq = (index) => {
     setOpenFaq(openFaq === index ? null : index);
-  };
-
-  const toggleMenu = () => {
-    setMenuOpen(!menuOpen);
   };
 
   const faqItems = [
@@ -46,87 +88,66 @@ export default function Home() {
   ];
 
   return (
-    <div className={styles.container}>
+    <div className={styles.pageWrapper}>
       <Head>
         <title>Free Image Metadata Extractor</title>
         <meta name="description" content="Unlock the potential of your images with our advanced image data extractor web app. Easily extract text, metadata, and insights from images in seconds. Try it now for free!" />
         <link rel="icon" type="image/svg+xml" href="favicon.svg" />
       </Head>
 
-      <div className={styles.pageWrapper}>
-        <div className={styles.fixedHeader}>
-          <div className={styles.menuToggle} onClick={toggleMenu}>
-            <div className={styles.hamburger}></div>
-            <div className={styles.hamburger}></div>
-            <div className={styles.hamburger}></div>
-          </div>
-          <h1 className={styles.title}>Image Metadata Extractor</h1>
-          <p className={styles.description}>Find and extract image metadata</p>
-          <form onSubmit={handleMetadataExtraction}>
-            <input
-              type="text"
-              name="imageUrl"
-              placeholder="Enter image URL"
-              className={styles.input}
-            />
-            <button type="submit" className={styles.button} disabled={loading}>
-              {loading ? 'Processing...' : 'Check metadata'}
+      <main className={styles.scrollableContent}>
+        <h1 className={styles.title}>Image Metadata Extractor</h1>
+        <p className={styles.description}>Find and extract image metadata</p>
+
+        <form onSubmit={handleMetadataExtraction} className={styles.form}>
+          <input
+            type="text"
+            name="imageUrl"
+            placeholder="Enter image URL"
+            className={styles.input}
+          />
+          <button type="submit" className={styles.button} disabled={loading}>
+            {loading ? 'Processing...' : 'Check metadata'}
+          </button>
+        </form>
+
+        <div className={styles.dropZone} id="dropZone">
+          <p>Drag and drop an image here or</p>
+          <input type="file" name="file" accept="image/*" className={styles.fileInput} />
+        </div>
+
+        {loading && <div className={styles.loading}>
+          <div className={styles.loadingSpinner}></div>
+        </div>}
+        {error && <p className={styles.error}>{error}</p>}
+        {metadata && (
+          <div className={styles.metadataOutput}>
+            <h2>Metadata:</h2>
+            <pre>{JSON.stringify(metadata, null, 2)}</pre>
+            <button className={styles.copyButton} onClick={() => navigator.clipboard.writeText(JSON.stringify(metadata, null, 2))}>
+              Copy Metadata
             </button>
-          </form>
-          <div className={styles.dropZone} id="dropZone">
-            <p>Drag and drop an image here or</p>
-            <input type="file" name="file" accept="image/*" />
           </div>
-        </div>
+        )}
 
-        <nav className={`${styles.navMenu} ${menuOpen ? styles.active : ''}`}>
-          <ul>
-            <li><Link href="/">Home</Link></li>
-            <li><Link href="/blog">Blog</Link></li>
-          </ul>
-        </nav>
+        <p className={styles.infoText}>
+          Reveal data that is stored in your files, such as size, date of the last change, and the applications that were involved in the creation process.
+        </p>
 
-        <div className={styles.scrollableContent}>
-          {loading && <div className={styles.loading}>
-            <div className={styles.loadingSpinner}></div>
-          </div>}
-          {error && <p className={styles.error}>{error}</p>}
-          {metadata && (
-            <div className={styles.metadataOutput}>
-              <h2>Metadata:</h2>
-              <pre>{JSON.stringify(metadata, null, 2)}</pre>
-            </div>
-          )}
-
-          <p>Reveal data that is stored in your files, such as size, date of the last change, and the applications that were involved in the creation process.</p>
-
-          <div className={styles.faq}>
-            <h2>Frequently Asked Questions</h2>
-            {faqItems.map((item, index) => (
-              <div key={index} className={styles.faqItem}>
-                <div className={styles.faqQuestion} onClick={() => toggleFaq(index)}>
-                  <h3>{item.question}</h3>
-                </div>
-                <div className={`${styles.faqAnswer} ${openFaq === index ? styles.open : ''}`}>
-                  {item.answer}
-                </div>
+        <div className={styles.faq}>
+          <h2>Frequently Asked Questions</h2>
+          {faqItems.map((item, index) => (
+            <div key={index} className={styles.faqItem}>
+              <div className={styles.faqQuestion} onClick={() => toggleFaq(index)}>
+                <h3>{item.question}</h3>
               </div>
-            ))}
-          </div>
-
-          <div className={styles.socialIcons}>
-            {/* Add your social icons here */}
-          </div>
+              <div className={`${styles.faqAnswer} ${openFaq === index ? styles.open : ''}`}>
+                {item.answer}
+              </div>
+            </div>
+          ))}
         </div>
-
-        <footer className={styles.footer}>
-          <p>&copy; 2024 Image Metadata Extractor. All rights reserved.</p>
-          <nav>
-            <Link href="/terms">Terms of Use</Link> | 
-            <Link href="/privacy">Privacy Policy</Link>
-          </nav>
-        </footer>
-      </div>
+      </main>
     </div>
   );
 }
