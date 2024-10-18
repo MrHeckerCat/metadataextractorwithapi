@@ -75,7 +75,7 @@ export default function Home() {
   const faqItems = [
     {
       question: "How do I use this tool?",
-      answer: "Enter the URL of an image in the input field and click \"Check metadata\" to extract the metadata."
+      answer: "Enter the URL of an image in the input field and click \"Check metadata\" to extract the metadata. Alternatively, you can upload an image file directly."
     },
     {
       question: "What type of metadata can I find?",
@@ -88,14 +88,14 @@ export default function Home() {
   ];
 
   return (
-    <div className={styles.pageWrapper}>
+    <div className={styles.container}>
       <Head>
-        <title>Free Image Metadata Extractor</title>
-        <meta name="description" content="Unlock the potential of your images with our advanced image data extractor web app. Easily extract text, metadata, and insights from images in seconds. Try it now for free!" />
-        <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+        <title>Image Metadata Extractor</title>
+        <meta name="description" content="Extract metadata from images" />
+        <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className={styles.scrollableContent}>
+      <main className={styles.main}>
         <h1 className={styles.title}>Image Metadata Extractor</h1>
         <p className={styles.description}>Find and extract image metadata</p>
 
@@ -106,42 +106,35 @@ export default function Home() {
             placeholder="Enter image URL"
             className={styles.input}
           />
+          <p className={styles.orText}>OR</p>
+          <input type="file" name="file" className={styles.input} />
           <button type="submit" className={styles.button} disabled={loading}>
             {loading ? 'Processing...' : 'Check metadata'}
           </button>
         </form>
 
-        <div className={styles.dropZone} id="dropZone">
-          <p>Drag and drop an image here or</p>
-          <input type="file" name="file" accept="image/*" className={styles.fileInput} />
-        </div>
-
-        {loading && <div className={styles.loading}>
-          <div className={styles.loadingSpinner}></div>
-        </div>}
+        {loading && <p>Loading...</p>}
         {error && <p className={styles.error}>{error}</p>}
         {metadata && (
-          <div className={styles.metadataOutput}>
+          <div className={styles.metadata}>
             <h2>Metadata:</h2>
             <pre>{JSON.stringify(metadata, null, 2)}</pre>
-            <button className={styles.copyButton} onClick={() => navigator.clipboard.writeText(JSON.stringify(metadata, null, 2))}>
-              Copy Metadata
-            </button>
           </div>
         )}
-
-        <p className={styles.infoText}>
-          Reveal data that is stored in your files, such as size, date of the last change, and the applications that were involved in the creation process.
-        </p>
 
         <div className={styles.faq}>
           <h2>Frequently Asked Questions</h2>
           {faqItems.map((item, index) => (
             <div key={index} className={styles.faqItem}>
-              <div className={styles.faqQuestion} onClick={() => toggleFaq(index)}>
+              <div 
+                className={styles.faqQuestion} 
+                onClick={() => toggleFaq(index)}
+              >
                 <h3>{item.question}</h3>
               </div>
-              <div className={`${styles.faqAnswer} ${openFaq === index ? styles.open : ''}`}>
+              <div 
+                className={`${styles.faqAnswer} ${openFaq === index ? styles.open : ''}`}
+              >
                 {item.answer}
               </div>
             </div>
