@@ -8,7 +8,6 @@ export default function MetadataCopyrightBlogPost() {
       <Head>
         <title>Metadata and Copyright: Protecting Your Digital Images | Image Metadata Extractor</title>
         <meta name="description" content="Learn how metadata can help protect your digital images' copyright. Discover the importance of embedding copyright information and how our Image Metadata Extractor can assist you." />
-        <meta name="keywords" content="metadata, copyright protection, digital images, Image Metadata Extractor" />
         <link rel="canonical" href="https://imagedataextract.com/blog/metadata-copyright" />
       </Head>
 
