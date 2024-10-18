@@ -7,6 +7,7 @@ export default function Home() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
+  const [copySuccess, setCopySuccess] = useState('');
 
   const handleMetadataExtraction = async (event) => {
     event.preventDefault();
@@ -72,6 +73,18 @@ export default function Home() {
     setOpenFaq(openFaq === index ? null : index);
   };
 
+  const copyMetadata = () => {
+    navigator.clipboard.writeText(JSON.stringify(metadata, null, 2))
+      .then(() => {
+        setCopySuccess('Copied!');
+        setTimeout(() => setCopySuccess(''), 2000);
+      })
+      .catch(err => {
+        console.error('Failed to copy: ', err);
+        setCopySuccess('Failed to copy');
+      });
+  };
+
   const faqItems = [
     {
       question: "How do I use this tool?",
@@ -119,6 +132,9 @@ export default function Home() {
           <div className={styles.metadata}>
             <h2>Metadata:</h2>
             <pre>{JSON.stringify(metadata, null, 2)}</pre>
+            <button onClick={copyMetadata} className={styles.copyButton}>
+              {copySuccess || 'Copy Metadata'}
+            </button>
           </div>
         )}
 
