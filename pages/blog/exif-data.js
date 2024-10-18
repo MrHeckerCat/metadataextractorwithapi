@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import styles from '../../styles/BlogPost.module.css';
+import styles from '../styles/BlogPost.module.css';
 
 export default function ExifDataBlogPost() {
   return (
