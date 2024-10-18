@@ -1,12 +1,3 @@
-.container {
-    font-family: Arial, sans-serif;
-    line-height: 1.6;
-    background-color: #f4f4f4;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
-
 .pageWrapper {
     width: 100%;
     max-width: 800px;
@@ -18,15 +9,9 @@
     flex-grow: 1;
 }
 
-.fixedHeader {
-    position: sticky;
-    top: 0;
-    background-color: #fff;
+.scrollableContent {
     padding: 20px;
-    z-index: 1000;
-    border-bottom: 1px solid #ddd;
-    width: 100%;
-    box-sizing: border-box;
+    flex-grow: 1;
 }
 
 .title {
@@ -41,10 +26,16 @@
     margin-bottom: 20px;
 }
 
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
 .input {
     width: 100%;
     padding: 10px;
-    margin-bottom: 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
     box-sizing: border-box;
@@ -57,13 +48,25 @@
     padding: 10px 15px;
     border-radius: 4px;
     cursor: pointer;
-    width: 100%;
     white-space: nowrap;
 }
 
-.scrollableContent {
+.dropZone {
+    border: 2px dashed #ccc;
+    border-radius: 4px;
     padding: 20px;
-    flex-grow: 1;
+    text-align: center;
+    margin: 20px 0;
+    transition: all 0.3s ease;
+}
+
+.dropZone.dragover {
+    background-color: #e1e1e1;
+    border-color: #999;
+}
+
+.fileInput {
+    display: none;
 }
 
 .metadataOutput {
@@ -72,6 +75,45 @@
     padding: 10px;
     margin-bottom: 20px;
     overflow-x: auto;
+}
+
+.copyButton {
+    background-color: #7c83fd;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.loading {
+    text-align: center;
+    padding: 20px;
+}
+
+.loadingSpinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.error {
+    color: red;
+    margin-bottom: 20px;
+}
+
+.infoText {
+    margin-bottom: 20px;
 }
 
 .faq {
@@ -108,169 +150,20 @@
     display: block;
 }
 
-.socialIcons {
-    margin-top: 20px;
-    text-align: center;
-}
-
-.socialIcons a {
-    color: #7c83fd;
-    text-decoration: none;
-    margin: 0 10px;
-}
-
-.socialIcons a:hover {
-    color: #6268ca;
-}
-
-.socialIcon {
-    width: 24px;
-    height: 24px;
-    fill: currentColor;
-}
-
-.footer {
-    text-align: center;
-    font-size: 12px;
-    color: #666;
-    margin-top: auto;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.menuToggle {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    cursor: pointer;
-    z-index: 1001;
-}
-
-.hamburger {
-    width: 30px;
-    height: 3px;
-    background-color: #333;
-    margin: 6px 0;
-    transition: 0.4s;
-}
-
-.navMenu {
-    position: absolute;
-    top: 60px;
-    right: 20px;
-    width: 200px;
-    background-color: #f4f4f4;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    opacity: 0;
-    visibility: hidden;
-    transition: 0.3s;
-    z-index: 1000;
-}
-
-.navMenu.active {
-    opacity: 1;
-    visibility: visible;
-}
-
-.navMenu ul {
-    list-style-type: none;
-    padding: 0;
-    margin: 0;
-}
-
-.navMenu ul li {
-    padding: 10px 15px;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-.navMenu ul li:last-child {
-    border-bottom: none;
-}
-
-.navMenu ul li a {
-    color: #333;
-    text-decoration: none;
-    font-size: 16px;
-    display: block;
-}
-
-.navMenu ul li a:hover {
-    color: #7c83fd;
-}
-
-.dropZone {
-    border: 2px dashed #ccc;
-    border-radius: 4px;
-    padding: 20px;
-    text-align: center;
-    margin: 20px 0;
-    transition: all 0.3s ease;
-}
-
-.dropZone.dragover {
-    background-color: #e1e1e1;
-    border-color: #999;
-}
-
-.loading {
-    text-align: center;
-    padding: 20px;
-}
-
-.loadingSpinner {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #3498db;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin: 20px auto;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
 @media (max-width: 600px) {
-    .menuToggle {
-        top: 15px;
-        right: 15px;
-    }
-    .hamburger {
-        width: 25px;
-        height: 2px;
-        margin: 5px 0;
-    }
-    .navMenu {
-        top: 50px;
-        right: 15px;
-        width: calc(100% - 30px);
-        max-width: none;
-    }
-    .navMenu ul li {
-        padding: 15px;
-    }
-    .navMenu ul li a {
-        font-size: 16px;
-    }
-    .fixedHeader {
-        padding-top: 50px;
-    }
     .pageWrapper {
         box-shadow: none;
     }
-    .fixedHeader, .scrollableContent {
+
+    .scrollableContent {
         padding: 15px;
     }
+
     .title {
         font-size: 20px;
     }
-    .input {
-        margin-right: 0;
-        margin-bottom: 10px;
-    }
-    .button {
+
+    .input, .button {
         width: 100%;
     }
 }
