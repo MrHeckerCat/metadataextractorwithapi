@@ -4,12 +4,32 @@
   min-height: 100vh;
 }
 
-.fixedHeader {
+.fixed-header {
   position: sticky;
   top: 0;
   background-color: #fff;
-  padding: 1rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 20px;
+  z-index: 1000;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fixed-header nav {
+  display: flex;
+  gap: 20px; /* Increased margin between navigation links */
+}
+
+.fixed-header nav a {
+  color: #7c83fd; /* Changed to match the website color theme */
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.fixed-header nav a:hover {
+  color: #6268ca; /* Darker shade for hover effect */
 }
 
 .scrollableContent {
