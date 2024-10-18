@@ -8,7 +8,6 @@ export default function ExifDataBlogPost() {
       <Head>
         <title>Understanding EXIF Data: What It Is and Why It Matters | Image Metadata Extractor</title>
         <meta name="description" content="Learn about EXIF data, its importance in digital photography, and how to use it to improve your images. Discover how our Image Metadata Extractor can help you access EXIF information easily." />
-        <meta name="keywords" content="EXIF data, image metadata, digital photography, Image Metadata Extractor" />
         <link rel="canonical" href="https://imagedataextract.com/blog/exif-data" />
       </Head>
 
