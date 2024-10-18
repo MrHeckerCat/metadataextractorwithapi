@@ -103,9 +103,9 @@ export default function Home() {
   return (
     <div className={styles.container}>
       <Head>
-        <title>Image Metadata Extractor</title>
-        <meta name="description" content="Extract metadata from images" />
-        <link rel="icon" href="/favicon.ico" />
+        <title>Free Image Metadata Extractor</title>
+        <meta name="description" content="Unlock the potential of your images with our advanced image data extractor web app. Easily extract text, metadata, and insights from images in seconds.Try it now for free!" />
+        <link rel="icon" href="/favicon.svg" />
       </Head>
 
       <main className={styles.main}>
