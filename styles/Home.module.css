@@ -1,69 +1,276 @@
 .container {
-  min-height: 100vh;
-  padding: 0 0.5rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    background-color: #f4f4f4;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
 }
 
-.main {
-  padding: 5rem 0;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+.pageWrapper {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.fixedHeader {
+    position: sticky;
+    top: 0;
+    background-color: #fff;
+    padding: 20px;
+    z-index: 1000;
+    border-bottom: 1px solid #ddd;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .title {
-  margin: 0;
-  line-height: 1.15;
-  font-size: 4rem;
-  text-align: center;
+    color: #333;
+    margin-top: 0;
+    font-size: 24px;
 }
 
 .description {
-  text-align: center;
-  line-height: 1.5;
-  font-size: 1.5rem;
-}
-
-.form {
-  margin-top: 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 20px;
 }
 
 .input {
-  margin: 0.5rem 0;
-  padding: 0.5rem;
-  width: 300px;
-}
-
-.orText {
-  margin: 0.5rem 0;
-  font-weight: bold;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
 }
 
 .button {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  background-color: #0070f3;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+    background-color: #7c83fd;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    width: 100%;
+    white-space: nowrap;
 }
 
-.error {
-  color: red;
+.scrollableContent {
+    padding: 20px;
+    flex-grow: 1;
 }
 
-.metadata {
-  margin-top: 2rem;
-  padding: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+.metadataOutput {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+}
+
+.faq {
+    margin-top: 30px;
+}
+
+.faqItem {
+    margin-bottom: 10px;
+}
+
+.faqQuestion {
+    background-color: #e7e7e7;
+    color: #333;
+    padding: 15px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.faqQuestion:hover {
+    background-color: #BEC1FE;
+}
+
+.faqAnswer {
+    display: none;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-left: 5px solid #7c83fd;
+    margin-bottom: 20px;
+}
+
+.faqAnswer.open {
+    display: block;
+}
+
+.socialIcons {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.socialIcons a {
+    color: #7c83fd;
+    text-decoration: none;
+    margin: 0 10px;
+}
+
+.socialIcons a:hover {
+    color: #6268ca;
+}
+
+.socialIcon {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
+}
+
+.footer {
+    text-align: center;
+    font-size: 12px;
+    color: #666;
+    margin-top: auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.menuToggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    cursor: pointer;
+    z-index: 1001;
+}
+
+.hamburger {
+    width: 30px;
+    height: 3px;
+    background-color: #333;
+    margin: 6px 0;
+    transition: 0.4s;
+}
+
+.navMenu {
+    position: absolute;
+    top: 60px;
+    right: 20px;
+    width: 200px;
+    background-color: #f4f4f4;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    opacity: 0;
+    visibility: hidden;
+    transition: 0.3s;
+    z-index: 1000;
+}
+
+.navMenu.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.navMenu ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.navMenu ul li {
+    padding: 10px 15px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.navMenu ul li:last-child {
+    border-bottom: none;
+}
+
+.navMenu ul li a {
+    color: #333;
+    text-decoration: none;
+    font-size: 16px;
+    display: block;
+}
+
+.navMenu ul li a:hover {
+    color: #7c83fd;
+}
+
+.dropZone {
+    border: 2px dashed #ccc;
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    margin: 20px 0;
+    transition: all 0.3s ease;
+}
+
+.dropZone.dragover {
+    background-color: #e1e1e1;
+    border-color: #999;
+}
+
+.loading {
+    text-align: center;
+    padding: 20px;
+}
+
+.loadingSpinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 600px) {
+    .menuToggle {
+        top: 15px;
+        right: 15px;
+    }
+    .hamburger {
+        width: 25px;
+        height: 2px;
+        margin: 5px 0;
+    }
+    .navMenu {
+        top: 50px;
+        right: 15px;
+        width: calc(100% - 30px);
+        max-width: none;
+    }
+    .navMenu ul li {
+        padding: 15px;
+    }
+    .navMenu ul li a {
+        font-size: 16px;
+    }
+    .fixedHeader {
+        padding-top: 50px;
+    }
+    .pageWrapper {
+        box-shadow: none;
+    }
+    .fixedHeader, .scrollableContent {
+        padding: 15px;
+    }
+    .title {
+        font-size: 20px;
+    }
+    .input {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+    .button {
+        width: 100%;
+    }
 }
