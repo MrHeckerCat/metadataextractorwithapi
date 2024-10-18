@@ -106,6 +106,7 @@ export default function Home() {
         <title>Free Image Metadata Extractor</title>
         <meta name="description" content="Unlock the potential of your images with our advanced image data extractor web app. Easily extract text, metadata, and insights from images in seconds.Try it now for free!" />
         <link rel="icon" href="/favicon.svg" />
+    <script async="" src="https://www.googletagmanager.com/gtag/js?id=G-C1KENV7JHT"></script>
       </Head>
 
       <main className={styles.main}>
