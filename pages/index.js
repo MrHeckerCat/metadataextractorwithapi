@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import styles from '../styles/Home.module.css';
 
 export default function Home() {
   const [metadata, setMetadata] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [openFaq, setOpenFaq] = useState(null);
 
   const handleMetadataExtraction = async (event) => {
     event.preventDefault();
@@ -67,12 +69,32 @@ export default function Home() {
     }
   };
 
+  const toggleFaq = (index) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
+
+  const faqItems = [
+    {
+      question: "How do I use this tool?",
+      answer: "Enter the URL of an image in the input field and click \"Check metadata\" to extract the metadata."
+    },
+    {
+      question: "What type of metadata can I find?",
+      answer: "You can find information such as image size, creation date, camera settings, and more, depending on the image."
+    },
+    {
+      question: "Is it possible to extract metadata from any image?",
+      answer: "Most digital images contain some form of metadata, but the amount and type of information can vary depending on the image source and format."
+    }
+  ];
+
   return (
     <div className={styles.container}>
       <Head>
-        <title>Image Metadata Extractor</title>
-        <meta name="description" content="Extract metadata from images" />
-        <link rel="icon" href="/favicon.ico" />
+        <title>Free Image Metadata Extractor</title>
+        <meta name="description" content="Unlock the potential of your images with our advanced image data extractor web app. Easily extract text, metadata, and insights from images in seconds. Try it now for free!" />
+        <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+        {/* You might want to add the Google Analytics script here */}
       </Head>
 
       <main className={styles.main}>
@@ -86,8 +108,10 @@ export default function Home() {
             placeholder="Enter image URL"
             className={styles.input}
           />
-          <p className={styles.orText}>OR</p>
-          <input type="file" name="file" className={styles.input} />
+          <div className={styles.dropZone} id="dropZone">
+            <p>Drag and drop an image here or</p>
+            <input type="file" name="file" accept="image/*" className={styles.fileInput} />
+          </div>
           <button type="submit" className={styles.button} disabled={loading}>
             {loading ? 'Processing...' : 'Check metadata'}
           </button>
@@ -99,9 +123,42 @@ export default function Home() {
           <div className={styles.metadata}>
             <h2>Metadata:</h2>
             <pre>{JSON.stringify(metadata, null, 2)}</pre>
+            <button className={styles.copyButton} onClick={() => navigator.clipboard.writeText(JSON.stringify(metadata, null, 2))}>
+              Copy Metadata
+            </button>
           </div>
         )}
+
+        <p className={styles.infoText}>
+          Reveal data that is stored in your files, such as size, date of the last change, and the applications that were involved in the creation process.
+        </p>
+
+        <div className={styles.faq}>
+          <h2>Frequently Asked Questions</h2>
+          {faqItems.map((item, index) => (
+            <div key={index} className={styles.faqItem}>
+              <div className={styles.faqQuestion} onClick={() => toggleFaq(index)}>
+                <h3>{item.question}</h3>
+              </div>
+              <div className={`${styles.faqAnswer} ${openFaq === index ? styles.open : ''}`}>
+                {item.answer}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className={styles.socialIcons}>
+          {/* Add your social icons here */}
+        </div>
       </main>
+
+      <footer className={styles.footer}>
+        <p>&copy; 2024 Image Metadata Extractor. All rights reserved.</p>
+        <nav>
+          <Link href="/terms">Terms of Use</Link> | 
+          <Link href="/privacy">Privacy Policy</Link>
+        </nav>
+      </footer>
     </div>
   );
 }
