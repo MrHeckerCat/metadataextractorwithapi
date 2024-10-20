@@ -150,12 +150,235 @@ export default function Privacy() {
           )}
         </section>
 
-        {/* Sections 4-14 */}
-        {/* Add the remaining sections here, following the same pattern as above */}
-
+        {/* Section 4 */}
         <section className={styles.content}>
-          <h2 id="section13" onClick={() => toggleSection('section13')}>13. HOW CAN YOU CONTACT US ABOUT THIS NOTICE?</h2>
-          {activeSection === 'section13' && (
-            <p>If you have questions or comments about this notice, you may email us at info@imagedataextract.com</p>
+          <h2 id="section4" onClick={() => toggleSection('section4')}>4. WHEN AND WITH WHOM DO WE SHARE YOUR PERSONAL INFORMATION?</h2>
+          {activeSection === 'section4' && (
+            <>
+              <p><strong>In Short:</strong> We may share information in specific situations described in this section and/or with the following categories of third parties.</p>
+              <h3>Vendors, Consultants, and Other Third-Party Service Providers.</h3>
+              <p>We may share your data with third-party vendors, service providers, contractors, or agents ("third parties") who perform services for us or on our behalf and require access to such information to do that work.</p>
+              <p>The categories of third parties we may share personal information with are as follows:</p>
+              <ul>
+                <li>Data Analytics Services</li>
+              </ul>
+              <p>We also may need to share your personal information in the following situations:</p>
+              <ul>
+                <li>Business Transfers. We may share or transfer your information in connection with, or during negotiations of, any merger, sale of company assets, financing, or acquisition of all or a portion of our business to another company.</li>
+              </ul>
+            </>
           )}
         </section>
+
+        {/* Section 5 */}
+        <section className={styles.content}>
+          <h2 id="section5" onClick={() => toggleSection('section5')}>5. DO WE USE COOKIES AND OTHER TRACKING TECHNOLOGIES?</h2>
+          {activeSection === 'section5' && (
+            <>
+              <p><strong>In Short:</strong> We may use cookies and other tracking technologies to collect and store your information.</p>
+              <p>We may use cookies and similar tracking technologies (like web beacons and pixels) to gather information when you interact with our Services. Some online tracking technologies help us maintain the security of our Services, prevent crashes, fix bugs, save your preferences, and assist with basic site functions.</p>
+              <p>We also permit third parties and service providers to use online tracking technologies on our Services for analytics and advertising, including to help manage and display advertisements, to tailor advertisements to your interests, or to send abandoned shopping cart reminders (depending on your communication preferences). The third parties and service providers use their technology to provide advertising about products and services tailored to your interests which may appear either on our Services or on other websites.</p>
+              <p>To the extent these online tracking technologies are deemed to be a "sale"/"sharing" (which includes targeted advertising, as defined under the applicable laws) under applicable US state laws, you can opt out of these online tracking technologies by submitting a request as described below under section "DO UNITED STATES RESIDENTS HAVE SPECIFIC PRIVACY RIGHTS?".</p>
+              <p>Specific information about how we use such technologies and how you can refuse certain cookies is set out in our Cookie Notice.</p>
+              <h3>Google Analytics</h3>
+              <p>We may share your information with Google Analytics to track and analyze the use of the Services. The Google Analytics Advertising Features that we may use include: Google Analytics Demographics and Interests Reporting. To opt out of being tracked by Google Analytics across the Services, visit <Link href="https://tools.google.com/dlpage/gaoptout">https://tools.google.com/dlpage/gaoptout</Link>. You can opt out of Google Analytics Advertising Features through Ads Settings and Ad Settings for mobile apps. Other opt out means include <Link href="http://optout.networkadvertising.org/">http://optout.networkadvertising.org/</Link> and <Link href="http://www.networkadvertising.org/mobile-choice">http://www.networkadvertising.org/mobile-choice</Link>. For more information on the privacy practices of Google, please visit the Google Privacy & Terms page.</p>
+            </>
+          )}
+        </section>
+
+        {/* Section 6 */}
+        <section className={styles.content}>
+          <h2 id="section6" onClick={() => toggleSection('section6')}>6. HOW LONG DO WE KEEP YOUR INFORMATION?</h2>
+          {activeSection === 'section6' && (
+            <>
+              <p><strong>In Short:</strong> We keep your information for as long as necessary to fulfill the purposes outlined in this Privacy Notice unless otherwise required by law.</p>
+              <p>We will only keep your personal information for as long as it is necessary for the purposes set out in this Privacy Notice, unless a longer retention period is required or permitted by law (such as tax, accounting, or other legal requirements).</p>
+              <p>When we have no ongoing legitimate business need to process your personal information, we will either delete or anonymize such information, or, if this is not possible (for example, because your personal information has been stored in backup archives), then we will securely store your personal information and isolate it from any further processing until deletion is possible.</p>
+            </>
+          )}
+        </section>
+
+        {/* Section 7 */}
+        <section className={styles.content}>
+          <h2 id="section7" onClick={() => toggleSection('section7')}>7. HOW DO WE KEEP YOUR INFORMATION SAFE?</h2>
+          {activeSection === 'section7' && (
+            <>
+              <p><strong>In Short:</strong> We aim to protect your personal information through a system of organizational and technical security measures.</p>
+              <p>We have implemented appropriate and reasonable technical and organizational security measures designed to protect the security of any personal information we process. However, despite our safeguards and efforts to secure your information, no electronic transmission over the Internet or information storage technology can be guaranteed to be 100% secure, so we cannot promise or guarantee that hackers, cybercriminals, or other unauthorized third parties will not be able to defeat our security and improperly collect, access, steal, or modify your information. Although we will do our best to protect your personal information, transmission of personal information to and from our Services is at your own risk. You should only access the Services within a secure environment.</p>
+            </>
+          )}
+        </section>
+
+        {/* Section 8 */}
+        <section className={styles.content}>
+          <h2 id="section8" onClick={() => toggleSection('section8')}>8. DO WE COLLECT INFORMATION FROM MINORS?</h2>
+          {activeSection === 'section8' && (
+            <>
+              <p><strong>In Short:</strong> We do not knowingly collect data from or market to children under 18 years of age.</p>
+              <p>We do not knowingly collect, solicit data from, or market to children under 18 years of age, nor do we knowingly sell such personal information. By using the Services, you represent that you are at least 18 or that you are the parent or guardian of such a minor and consent to such minor dependent’s use of the Services. If we learn that personal information from users less than 18 years of age has been collected, we will deactivate the account and take reasonable measures to promptly delete such data from our records. If you become aware of any data we may have collected from children under age 18, please contact us at info@imagedataextract.com.</p>
+            </>
+          )}
+        </section>
+
+        {/* Section 9 */}
+        <section className={styles.content}>
+          <h2 id="section9" onClick={() => toggleSection('section9')}>9. WHAT ARE YOUR PRIVACY RIGHTS?</h2>
+          {activeSection === 'section9' && (
+            <>
+              <p><strong>In Short:</strong> Depending on your state of residence in the US or in some regions, such as the European Economic Area (EEA), United Kingdom (UK), Switzerland, and Canada, you have rights that allow you greater access to and control over your personal information. You may review, change, or terminate your account at any time, depending on your country, province, or state of residence.</p>
+              <p>In some regions (like the EEA, UK, Switzerland, and Canada), you have certain rights under applicable data protection laws. These may include the right (i) to request access and obtain a copy of your personal information, (ii) to request rectification or erasure; (iii) to restrict the processing of your personal information; (iv) if applicable, to data portability; and (v) not to be subject to automated decision-making. In certain circumstances, you may also have the right to object to the processing of your personal information. You can make such a request by contacting us by using the contact details provided in the section "HOW CAN YOU CONTACT US ABOUT THIS NOTICE?" below.</p>
+              <p>We will consider and act upon any request in accordance with applicable data protection laws.</p>
+              <p><strong>If you are located in the EEA or UK and you believe we are unlawfully processing your personal information, you also have the right to complain to your Member State data protection authority or UK data protection authority.</strong></p>
+              <p><strong>If you are located in Switzerland, you may contact the Federal Data Protection and Information Commissioner.</strong></p>
+              <p><strong>Withdrawing your consent:</strong> If we are relying on your consent to process your personal information, which may be express and/or implied consent depending on the applicable law, you have the right to withdraw your consent at any time. You can withdraw your consent at any time by contacting us by using the contact details provided in the section "HOW CAN YOU CONTACT US ABOUT THIS NOTICE?" below.</p>
+              <p>However, please note that this will not affect the lawfulness of the processing before its withdrawal nor, when applicable law allows, will it affect the processing of your personal information conducted in reliance on lawful processing grounds other than consent.</p>
+              <p><strong>Cookies and similar technologies:</strong> Most Web browsers are set to accept cookies by default. If you prefer, you can usually choose to set your browser to remove cookies and to reject cookies. If you choose to remove cookies or reject cookies, this could affect certain features or services of our Services.</p>
+              <p>If you have questions or comments about your privacy rights, you may email us at info@imagedataextract.com.</p>
+            </>
+          )}
+        </section>
+
+        {/* Section 10 */}
+        <section className={styles.content}>
+          <h2 id="section10" onClick={() => toggleSection('section10')}>10. CONTROLS FOR DO-NOT-TRACK FEATURES</h2>
+          {activeSection === 'section10' && (
+            <>
+              <p>Most web browsers and some mobile operating systems and mobile applications include a Do-Not-Track ("DNT") feature or setting you can activate to signal your privacy preference not to have data about your online browsing activities monitored and collected. At this stage, no uniform technology standard for recognizing and implementing DNT signals has been finalized. As such, we do not currently respond to DNT browser signals or any other mechanism that automatically communicates your choice not to be tracked online. If a standard for online tracking is adopted that we must follow in the future, we will inform you about that practice in a revised version of this Privacy Notice.</p>
+              <p>California law requires us to let you know how we respond to web browser DNT signals. Because there currently is not an industry or legal standard for recognizing or honoring DNT signals, we do not respond to them at this time.</p>
+            </>
+          )}
+        </section>
+
+        {/* Section 11 */}
+        <section className={styles.content}>
+          <h2 id="section11" onClick={() => toggleSection('section11')}>11. DO UNITED STATES RESIDENTS HAVE SPECIFIC PRIVACY RIGHTS?</h2>
+          {activeSection === 'section11' && (
+            <>
+              <p><strong>In Short:</strong> If you are a resident of California, Colorado, Connecticut, Delaware, Florida, Indiana, Iowa, Kentucky, Montana, New Hampshire, New Jersey, Oregon, Tennessee, Texas, Utah, or Virginia, you may have the right to request access to and receive details about the personal information we maintain about you and how we have processed it, correct inaccuracies, get a copy of, or delete your personal information. You may also have the right to withdraw your consent to our processing of your personal information. These rights may be limited in some circumstances by applicable law. More information is provided below.</p>
+              <h3>Categories of Personal Information We Collect</h3>
+              <p>We have collected the following categories of personal information in the past twelve (12) months:</p>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Examples</th>
+                    <th>Collected</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>A. Identifiers</td>
+                    <td>Contact details, such as real name, alias, postal address, telephone or mobile contact number, unique personal identifier, online identifier, Internet Protocol address, email address, and account name</td>
+                    <td>NO</td>
+                  </tr>
+                  <tr>
+                    <td>B. Personal information as defined in the California Customer Records statute</td>
+                    <td>Name, contact information, education, employment, employment history, and financial information</td>
+                    <td>NO</td>
+                  </tr>
+                  <tr>
+                    <td>C. Protected classification characteristics under state or federal law</td>
+                    <td>Gender, age, date of birth, race and ethnicity, national origin, marital status, and other demographic data</td>
+                    <td>NO</td>
+                  </tr>
+                  <tr>
+                    <td>D. Commercial information</td>
+                    <td>Transaction information, purchase history, financial details, and payment information</td>
+                    <td>NO</td>
+                  </tr>
+                  <tr>
+                    <td>E. Biometric information</td>
+                    <td>Fingerprints and voiceprints</td>
+                    <td>NO</td>
+                  </tr>
+                  <tr>
+                    <td>F. Internet or other similar network activity</td>
+                    <td>Browsing history, search history, online behavior, interest data, and interactions with our and other websites, applications, systems, and advertisements</td>
+                    <td>NO</td>
+                  </tr>
+                  <tr>
+                    <td>G. Geolocation data</td>
+                    <td>Device location</td>
+                    <td>YES</td>
+                  </tr>
+                  <tr>
+                    <td>H. Audio, electronic, sensory, or similar information</td>
+                    <td>Images and audio, video or call recordings created in connection with our business activities</td>
+                    <td>NO</td>
+                  </tr>
+                  <tr>
+                    <td>I. Professional or employment-related information</td>
+                    <td>Business contact details in order to provide you our Services at a business level or job title, work history, and professional qualifications if you apply for a job with us</td>
+                    <td>NO</td>
+                  </tr>
+                  <tr>
+                    <td>J. Education Information</td>
+                    <td>Student records and directory information</td>
+                    <td>NO</td>
+                  </tr>
+                  <tr>
+                    <td>K. Inferences drawn from collected personal information</td>
+                    <td>Inferences drawn from any of the collected personal information listed above to create a profile or summary about, for example, an individual’s preferences and characteristics</td>
+                    <td>NO</td>
+                  </tr>
+                  <tr>
+                    <td>L. Sensitive personal Information</td>
+                    <td></td>
+                    <td>NO</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p>We may also collect other personal information outside of these categories through instances where you interact with us in person, online, or by phone or mail in the context of:</p>
+              <ul>
+                <li>Receiving help through our customer support channels;</li>
+                <li>Participation in customer surveys or contests; and</li>
+                <li>Facilitation in the delivery of our Services and to respond to your inquiries.</li>
+              </ul>
+              <p>We will use and retain the collected personal information as needed to provide the Services or for:</p>
+              <ul>
+                <li>Category G - 6 months</li>
+              </ul>
+              <h3>Sources of Personal Information</h3>
+              <p>Learn more about the sources of personal information we collect in "WHAT INFORMATION DO WE COLLECT?".</p>
+              <h3>How We Use and Share Personal Information</h3>
+              <p>Learn about how we use your personal information in the section, "HOW DO WE PROCESS YOUR INFORMATION?".</p>
+              <p>We collect and share your personal information through:</p>
+              <ul>
+                <li>Targeting cookies/Marketing cookies</li>
+              </ul>
+              <h3>Will your information be shared with anyone else?</h3>
+              <p>We may disclose your personal information with our service providers pursuant to a written contract between us and each service provider. Learn more about how we disclose personal information to in the section, "WHEN AND WITH WHOM DO WE SHARE YOUR PERSONAL INFORMATION?".</p>
+              <p>We may use your personal information for our own business purposes, such as for undertaking internal research for technological development and demonstration. This is not considered to be "selling" of your personal information.</p>
+              <p>We have not sold or shared any personal information to third parties for a business or commercial purpose in the preceding twelve (12) months. We have disclosed the following categories of personal information to third parties for a business or commercial purpose in the preceding twelve (12) months:</p>
+              <ul>
+                <li>Geolocation data</li>
+              </ul>
+              <p>The categories of third parties to whom we disclosed personal information for a business or commercial purpose can be found under "WHEN AND WITH WHOM DO WE SHARE YOUR PERSONAL INFORMATION?".</p>
+              <h3>Your Rights</h3>
+              <p>You have rights under certain US state data protection laws. However, these rights are not absolute, and in certain cases, we may decline your request as permitted by law. These rights include:</p>
+              <ul>
+                <li>Right to know whether or not we are processing your personal data</li>
+                <li>Right to access your personal data</li>
+                <li>Right to correct inaccuracies in your personal data</li>
+                <li>Right to request the deletion of your personal data</li>
+                <li>Right to obtain a copy of the personal data you previously shared with us</li>
+                <li>Right to non-discrimination for exercising your rights</li>
+                <li>Right to opt out of the processing of your personal data if it is used for targeted advertising (or sharing as defined under California’s privacy law), the sale of personal data, or profiling in furtherance of decisions that produce legal or similarly significant effects ("profiling")</li>
+              </ul>
+              <p>Depending upon the state where you live, you may also have the following rights:</p>
+              <ul>
+                <li>Right to obtain a list of the categories of third parties to which we have disclosed personal data (as permitted by applicable law, including California's and Delaware's privacy law)</li>
+                <li>Right to obtain a list of specific third parties to which we have disclosed personal data (as permitted by applicable law, including Oregon’s privacy law)</li>
+                <li>Right to limit use and disclosure of sensitive personal data (as permitted by applicable law, including California’s privacy law)</li>
+                <li>Right to opt out of the collection of sensitive data and personal data collected through the operation of a voice or facial recognition feature (as permitted by applicable law, including Florida’s privacy law)</li>
+              </ul>
+              <h3>How to Exercise Your Rights</h3>
+              <p>To exercise these rights, you can contact us by submitting a data subject access request, by emailing us at info@imagedataextract.com, or by referring to the contact details at the bottom of this document.</p>
+              <p>Under certain US state data protection laws, you can designate an authorized agent to make a request on your behalf. We may deny a request from an authorized agent that does not submit proof that they have been validly authorized to act on your behalf in accordance with applicable laws.</p>
+              <h3>Request Verification</h3>
+              <p>Upon receiving your request, we will need to verify your identity to determine you are the same person about whom we have the information in our system. We will only use personal information provided in your request to verify your identity or authority to make the request. However, if we cannot verify your identity from the information already maintained by us, we may request that you provide additional information for the purposes of verifying your identity and for security or fraud-prevention purposes.</p>
+              <p>If you submit the request through an authorized agent, we may need to collect additional information to verify your identity before processing your request and the agent will need to provide a written and signed permission from you to submit such request on your behalf.</p>
+              <h3>Appeals</h3>
+              <p>Under certain US state data protection laws, if we decline to take action regarding your request, you may appeal our decision by emailing us at info@imagedataextract.com. We will inform you in writing of any action taken or not taken in response to the appeal, including a written explanation of the reasons for the decisions. If your appeal is denied, you may submit a complaint to your state attorney general.</p>
+              <h3>California "Shine The Light" Law</h3>
+              <p>California Civil Code Section 1798.83, also known as the "Shine The Light" law, permits our users who are California residents to request and obtain from us, once a year and free of charge, information
