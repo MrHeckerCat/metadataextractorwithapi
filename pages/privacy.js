@@ -383,3 +383,7 @@ export default function Privacy() {
               <h3>California "Shine The Light" Law</h3>
               <p>California Civil Code Section 1798.83, also known as the "Shine The Light" law, permits our users who are California residents to request and obtain from us, once a year and free of charge, information</p>
            </section>
+             </main>
+    </div>
+  );
+}
