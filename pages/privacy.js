@@ -382,3 +382,4 @@ export default function Privacy() {
               <p>Under certain US state data protection laws, if we decline to take action regarding your request, you may appeal our decision by emailing us at info@imagedataextract.com. We will inform you in writing of any action taken or not taken in response to the appeal, including a written explanation of the reasons for the decisions. If your appeal is denied, you may submit a complaint to your state attorney general.</p>
               <h3>California "Shine The Light" Law</h3>
               <p>California Civil Code Section 1798.83, also known as the "Shine The Light" law, permits our users who are California residents to request and obtain from us, once a year and free of charge, information</p>
+           </section>
