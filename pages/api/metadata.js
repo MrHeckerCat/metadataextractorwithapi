@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     const response = await fetch(`https://metadata-extractor.p.rapidapi.com/?url=${encodeURIComponent(url)}`, {
       method: 'GET',
       headers: {
-        'X-RapidAPI-Key': process.env.RAPID_API_KEY,
+        'X-RapidAPI-Key': '4da17a7022msh495ad0a68eb0428p13ecb3jsn314cfa75b62c',
         'X-RapidAPI-Host': 'metadata-extractor.p.rapidapi.com'
       }
     });
