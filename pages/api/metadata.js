@@ -1,10 +1,5 @@
-const express = require('express');
-const app = express();
+// pages/api/metadata.js
 
-// Add body parser middleware
-app.use(express.json());
-
-// Verify Turnstile token function
 async function verifyTurnstileToken(token) {
   try {
     const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
@@ -24,7 +19,6 @@ async function verifyTurnstileToken(token) {
   }
 }
 
-// Main API handler
 export default async function handler(req, res) {
   // Check method
   if (req.method !== 'POST') {
@@ -79,13 +73,3 @@ export default async function handler(req, res) {
     });
   }
 }
-
-// Add rate limiting middleware (optional but recommended)
-import rateLimit from 'express-rate-limit';
-
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-
-app.use('/api/metadata', limiter);
