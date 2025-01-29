@@ -33,6 +33,17 @@
     margin-bottom: 20px;
 }
 
+.cf-turnstile {
+  margin: 20px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.metadata-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
 .input {
     width: 100%;
     padding: 10px;
