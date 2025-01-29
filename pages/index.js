@@ -10,9 +10,13 @@ export default function Home() {
   const [copySuccess, setCopySuccess] = useState('');
   const [turnstileToken, setTurnstileToken] = useState(null);
 
-  // Initialize Turnstile when component mounts
   useEffect(() => {
-    // Load the Turnstile script
+    // Define the callback function in the window object
+    window.onTurnstileSuccess = (token) => {
+      setTurnstileToken(token);
+    };
+
+    // Load Turnstile script
     const script = document.createElement('script');
     script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
     script.async = true;
@@ -20,14 +24,12 @@ export default function Home() {
     document.head.appendChild(script);
 
     return () => {
-      document.head.removeChild(script);
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+      delete window.onTurnstileSuccess;
     };
   }, []);
-
-  // Turnstile callback function
-  const onTurnstileSuccess = (token) => {
-    setTurnstileToken(token);
-  };
 
   const handleMetadataExtraction = async (event) => {
     event.preventDefault();
@@ -35,7 +37,6 @@ export default function Home() {
     setError(null);
     setMetadata(null);
 
-    // Check if CAPTCHA is completed
     if (!turnstileToken) {
       setError('Please complete the CAPTCHA verification');
       setLoading(false);
@@ -80,7 +81,7 @@ export default function Home() {
         },
         body: JSON.stringify({ 
           url,
-          turnstileToken // Include the CAPTCHA token in the request
+          turnstileToken
         }),
       });
 
@@ -105,15 +106,6 @@ export default function Home() {
       setLoading(false);
     }
   };
-
-  // Add this to your JSX where you want the CAPTCHA to appear
-  const turnstileWidget = (
-    <div
-      className="cf-turnstile"
-      data-sitekey="0x4AAAAAAA6sK4niXvHyELAG" // Replace with your actual site key
-      data-callback={onTurnstileSuccess}
-    />
-  );
 
   const toggleFaq = (index) => {
     setOpenFaq(openFaq === index ? null : index);
@@ -152,7 +144,7 @@ export default function Home() {
         <title>Free Image Metadata Extractor</title>
         <meta name="description" content="Unlock the potential of your images with our advanced image data extractor web app. Easily extract text, metadata, and insights from images in seconds.Try it now for free!" />
         <link rel="icon" href="/favicon.svg" />
-    <script async="" src="https://www.googletagmanager.com/gtag/js?id=G-C1KENV7JHT"></script>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-C1KENV7JHT"></script>
       </Head>
 
       <main className={styles.main}>
@@ -168,8 +160,17 @@ export default function Home() {
           />
           <p className={styles.orText}>OR</p>
           <input type="file" name="file" className={styles.input} />
-          {turnstileWidget}
-          <button type="submit" className={styles.button} disabled={loading}>
+          
+          {/* Turnstile CAPTCHA Widget */}
+          <div
+            id="turnstile-widget"
+            className="cf-turnstile"
+            data-sitekey="0x4AAAAAAA6sK4niXvHyELAG"
+            data-callback="onTurnstileSuccess"
+            data-theme="light"
+          ></div>
+
+          <button type="submit" className={styles.button} disabled={loading || !turnstileToken}>
             {loading ? 'Processing...' : 'Check metadata'}
           </button>
         </form>
