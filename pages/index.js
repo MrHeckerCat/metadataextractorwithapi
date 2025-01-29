@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import styles from '../styles/Home.module.css';
 
@@ -8,12 +8,39 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
   const [copySuccess, setCopySuccess] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState(null);
+
+  // Initialize Turnstile when component mounts
+  useEffect(() => {
+    // Load the Turnstile script
+    const script = document.createElement('script');
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, []);
+
+  // Turnstile callback function
+  const onTurnstileSuccess = (token) => {
+    setTurnstileToken(token);
+  };
 
   const handleMetadataExtraction = async (event) => {
     event.preventDefault();
     setLoading(true);
     setError(null);
     setMetadata(null);
+
+    // Check if CAPTCHA is completed
+    if (!turnstileToken) {
+      setError('Please complete the CAPTCHA verification');
+      setLoading(false);
+      return;
+    }
 
     const imageUrl = event.target.imageUrl.value;
     const file = event.target.file.files[0];
@@ -51,7 +78,10 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ 
+          url,
+          turnstileToken // Include the CAPTCHA token in the request
+        }),
       });
 
       if (!metadataResponse.ok) {
@@ -61,6 +91,13 @@ export default function Home() {
 
       const metadataData = await metadataResponse.json();
       setMetadata(metadataData);
+
+      // Reset Turnstile after successful submission
+      if (window.turnstile) {
+        window.turnstile.reset();
+      }
+      setTurnstileToken(null);
+
     } catch (error) {
       console.error('Error:', error);
       setError(error.message || 'An unexpected error occurred');
@@ -68,6 +105,15 @@ export default function Home() {
       setLoading(false);
     }
   };
+
+  // Add this to your JSX where you want the CAPTCHA to appear
+  const turnstileWidget = (
+    <div
+      className="cf-turnstile"
+      data-sitekey="0x4AAAAAAA6sK4niXvHyELAG" // Replace with your actual site key
+      data-callback={onTurnstileSuccess}
+    />
+  );
 
   const toggleFaq = (index) => {
     setOpenFaq(openFaq === index ? null : index);
@@ -122,6 +168,7 @@ export default function Home() {
           />
           <p className={styles.orText}>OR</p>
           <input type="file" name="file" className={styles.input} />
+          {turnstileWidget}
           <button type="submit" className={styles.button} disabled={loading}>
             {loading ? 'Processing...' : 'Check metadata'}
           </button>
