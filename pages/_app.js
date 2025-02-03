@@ -1,17 +1,11 @@
-import Layout from '../components/Layout.js';
-import '../styles/globals.css';
+// pages/_app.js
 import { useEffect } from 'react'
 import { useRouter } from 'next/router'
 import * as gtag from '../lib/gtag'
+import Layout from '../components/Layout'
 
-function MyApp({ Component, pageProps }) {
-  return (
-    <Layout>
-      <Component {...pageProps} />
-    </Layout>
-  );
-}
-function MyApp({ Component, pageProps }) {
+// Instead of creating a new MyApp, modify your existing one
+export default function App({ Component, pageProps }) {
   const router = useRouter()
 
   useEffect(() => {
@@ -24,7 +18,9 @@ function MyApp({ Component, pageProps }) {
     }
   }, [router.events])
 
-  return <Component {...pageProps} />
+  return (
+    <Layout>
+      <Component {...pageProps} />
+    </Layout>
+  )
 }
-
-export default MyApp;
