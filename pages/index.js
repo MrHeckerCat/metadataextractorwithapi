@@ -10,6 +10,18 @@ export default function Home() {
   const [copySuccess, setCopySuccess] = useState('');
   const [turnstileToken, setTurnstileToken] = useState(null);
 
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-C1KENV7JHT"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-C1KENV7JHT');
+</script>
+
+  
   useEffect(() => {
     // Define the callback function in the window object
     window.onTurnstileSuccess = (token) => {
