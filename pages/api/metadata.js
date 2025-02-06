@@ -52,7 +52,7 @@ export default async function handler(req, res) {
       {
         method: 'GET',
         headers: {
-          'X-RapidAPI-Key': '4da17a7022msh495ad0a68eb0428p13ecb3jsn314cfa75b62c',
+          'X-RapidAPI-Key': '4da17a7022msh495ad0a68eb0428p13ecb3jsn314cfa75b62',
           'X-RapidAPI-Host': 'metadata-extractor.p.rapidapi.com'
         }
       }
