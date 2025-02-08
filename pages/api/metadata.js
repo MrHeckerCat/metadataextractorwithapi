@@ -1,4 +1,6 @@
 // pages/api/metadata.js
+import sharp from 'sharp';
+import ExifReader from 'exif-reader';
 
 async function verifyTurnstileToken(token) {
   try {
@@ -17,6 +19,55 @@ async function verifyTurnstileToken(token) {
     console.error('Turnstile verification error:', error);
     return { success: false, error: 'Failed to verify CAPTCHA' };
   }
+}
+
+async function extractMetadata(imageBuffer) {
+  try {
+    const metadata = await sharp(imageBuffer).metadata();
+    let exifData = {};
+
+    if (metadata.exif) {
+      try {
+        exifData = ExifReader.load(metadata.exif);
+      } catch (error) {
+        console.error('Error reading EXIF data:', error);
+      }
+    }
+
+    return {
+      format: metadata.format,
+      dimensions: {
+        width: metadata.width,
+        height: metadata.height,
+      },
+      colorInfo: {
+        space: metadata.space,
+        channels: metadata.channels,
+        depth: metadata.depth,
+        hasAlpha: metadata.hasAlpha,
+      },
+      imageProperties: {
+        density: metadata.density,
+        hasProfile: metadata.hasProfile,
+        orientation: metadata.orientation,
+      },
+      exif: exifData,
+      size: {
+        bytes: metadata.size,
+        formatted: formatFileSize(metadata.size)
+      }
+    };
+  } catch (error) {
+    throw new Error(`Error processing image: ${error.message}`);
+  }
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
 export default async function handler(req, res) {
@@ -46,25 +97,20 @@ export default async function handler(req, res) {
       });
     }
 
-    // If CAPTCHA is valid, proceed with metadata extraction
-    const response = await fetch(
-      `https://metadata-extractor.p.rapidapi.com/?url=${encodeURIComponent(url)}`, 
-      {
-        method: 'GET',
-        headers: {
-          'X-RapidAPI-Key': '4da17a7022msh495ad0a68eb0428p13ecb3jsn314cfa75b62',
-          'X-RapidAPI-Host': 'metadata-extractor.p.rapidapi.com'
-        }
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch metadata');
+    // Fetch the image
+    const imageResponse = await fetch(url);
+    if (!imageResponse.ok) {
+      throw new Error('Failed to fetch image');
     }
 
-    const data = await response.json();
-    res.status(200).json(data);
+    // Convert image to buffer
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const buffer = Buffer.from(imageBuffer);
 
+    // Extract metadata
+    const metadata = await extractMetadata(buffer);
+
+    res.status(200).json(metadata);
   } catch (error) {
     console.error('API error:', error);
     res.status(500).json({ 
