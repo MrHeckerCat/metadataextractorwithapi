@@ -1,6 +1,6 @@
 // pages/api/metadata.js
-import sharp from 'sharp';
-import ExifReader from 'exif-reader';
+import { Buffer } from 'buffer';
+import { ExifParser } from 'exif-parser';
 
 async function verifyTurnstileToken(token) {
   try {
@@ -23,39 +23,82 @@ async function verifyTurnstileToken(token) {
 
 async function extractMetadata(imageBuffer) {
   try {
-    const metadata = await sharp(imageBuffer).metadata();
+    const imageInfo = await import('probe-image-size');
+    const metadata = await imageInfo.default(imageBuffer);
+    
     let exifData = {};
-
-    if (metadata.exif) {
+    
+    // Try to extract EXIF data if it's a JPEG image
+    if (metadata.type.toLowerCase() === 'jpg' || metadata.type.toLowerCase() === 'jpeg') {
       try {
-        exifData = ExifReader.load(metadata.exif);
-      } catch (error) {
-        console.error('Error reading EXIF data:', error);
+        const parser = ExifParser.create(imageBuffer);
+        const result = parser.parse();
+        
+        exifData = {
+          tags: result.tags,
+          imageSize: result.imageSize,
+          thumbnailOffset: result.thumbnailOffset,
+          thumbnailLength: result.thumbnailLength,
+          thumbnailType: result.thumbnailType,
+          app1Offset: result.app1Offset,
+        };
+
+        // Extract GPS data if available
+        if (result.tags.GPSLatitude && result.tags.GPSLongitude) {
+          exifData.gps = {
+            latitude: result.tags.GPSLatitude,
+            longitude: result.tags.GPSLongitude,
+            altitude: result.tags.GPSAltitude,
+            latitudeRef: result.tags.GPSLatitudeRef,
+            longitudeRef: result.tags.GPSLongitudeRef,
+            altitudeRef: result.tags.GPSAltitudeRef
+          };
+        }
+
+        // Extract camera info if available
+        if (result.tags.Make || result.tags.Model) {
+          exifData.camera = {
+            make: result.tags.Make,
+            model: result.tags.Model,
+            software: result.tags.Software,
+            fNumber: result.tags.FNumber,
+            exposureTime: result.tags.ExposureTime,
+            ISO: result.tags.ISO,
+            focalLength: result.tags.FocalLength,
+            focalLengthIn35mmFormat: result.tags.FocalLengthIn35mmFormat,
+            flash: result.tags.Flash
+          };
+        }
+
+        // Extract date information
+        if (result.tags.DateTimeOriginal || result.tags.CreateDate) {
+          exifData.dates = {
+            original: result.tags.DateTimeOriginal,
+            created: result.tags.CreateDate,
+            modified: result.tags.ModifyDate,
+            digitized: result.tags.DateTimeDigitized
+          };
+        }
+      } catch (exifError) {
+        console.error('Error extracting EXIF data:', exifError);
       }
     }
 
     return {
-      format: metadata.format,
+      format: metadata.type,
       dimensions: {
         width: metadata.width,
         height: metadata.height,
       },
-      colorInfo: {
-        space: metadata.space,
-        channels: metadata.channels,
-        depth: metadata.depth,
-        hasAlpha: metadata.hasAlpha,
-      },
       imageProperties: {
-        density: metadata.density,
-        hasProfile: metadata.hasProfile,
         orientation: metadata.orientation,
+        mimeType: metadata.mime,
       },
-      exif: exifData,
       size: {
-        bytes: metadata.size,
-        formatted: formatFileSize(metadata.size)
-      }
+        bytes: imageBuffer.length,
+        formatted: formatFileSize(imageBuffer.length)
+      },
+      exif: exifData
     };
   } catch (error) {
     throw new Error(`Error processing image: ${error.message}`);
@@ -70,16 +113,21 @@ function formatFileSize(bytes) {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '4mb',
+    },
+  },
+};
+
 export default async function handler(req, res) {
-  // Check method
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Extract URL and turnstile token from request body
   const { url, turnstileToken } = req.body;
 
-  // Validate required fields
   if (!url) {
     return res.status(400).json({ error: 'URL is required' });
   }
