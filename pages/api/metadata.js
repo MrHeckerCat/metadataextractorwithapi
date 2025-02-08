@@ -130,10 +130,10 @@ async function extractMetadata(buffer) {
             formatted: formatFileSize(buffer.length)
           },
           exif: exifData
-        };
+        }
     }
   }
-}
+};
 
 function formatFileSize(bytes) {
   if (!bytes) return '0 Bytes';
