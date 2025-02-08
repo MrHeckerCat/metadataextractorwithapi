@@ -76,20 +76,24 @@ async function extractMetadata(buffer) {
             flash: result.tags.Flash
           };
         }
+        // Add this helper function to convert Unix timestamp to readable date
+function formatDate(timestamp) {
+  if (!timestamp) return null;
+  // Check if timestamp needs to be multiplied by 1000 (some EXIF timestamps are in seconds)
+  const date = new Date(timestamp * 1000);
+  return date.toISOString();
+}
 
+        
         // Extract date information
         if (result.tags.DateTimeOriginal || result.tags.CreateDate) {
-          exifData.dates = {
-            original: result.tags.DateTimeOriginal,
-            created: result.tags.CreateDate,
-            modified: result.tags.ModifyDate,
-            digitized: result.tags.DateTimeDigitized
-          };
-        }
-      } catch (exifError) {
-        console.error('Error extracting EXIF data:', exifError);
-      }
-    }
+  exifData.dates = {
+    original: formatDate(result.tags.DateTimeOriginal),
+    created: formatDate(result.tags.CreateDate),
+    modified: formatDate(result.tags.ModifyDate),
+    digitized: formatDate(result.tags.DateTimeDigitized)
+  };
+}
 
     return {
       format: metadata.type,
