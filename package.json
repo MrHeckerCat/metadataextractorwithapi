@@ -14,7 +14,8 @@
     "@vercel/og": "^0.5.8",
     "probe-image-size": "^7.2.3",
     "exif-parser": "^0.1.12",
-    "stream": "^0.0.2"
+    "stream": "^0.0.2",
+    "@vercel/analytics"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
