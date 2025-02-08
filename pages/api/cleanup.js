@@ -1,20 +1,16 @@
 import { del, list } from '@vercel/blob';
 
-export const config = {
-  runtime: 'edge',
-};
-
-export default async function cleanup(req) {
+export default async function cleanup(req, res) {
   try {
     // Only allow POST requests from Vercel Cron
     if (req.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 });
+      return res.status(405).json({ error: 'Method not allowed' });
     }
 
     // Verify the request is from Vercel Cron
-    const authHeader = req.headers.get('authorization');
+    const authHeader = req.headers.authorization;
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return new Response('Unauthorized', { status: 401 });
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
     // List all blobs
@@ -32,21 +28,16 @@ export default async function cleanup(req) {
     // Wait for all deletions to complete
     await Promise.all(deletionPromises);
 
-    return new Response(JSON.stringify({
+    return res.status(200).json({
       success: true,
       deletedCount: deletionPromises.length
-    }), {
-      headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
     console.error('Cleanup error:', error);
-    return new Response(JSON.stringify({
+    return res.status(500).json({
       success: false,
       error: error.message
-    }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
     });
   }
 }
