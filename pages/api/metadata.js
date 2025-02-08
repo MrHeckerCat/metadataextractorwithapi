@@ -2,6 +2,7 @@
 import { Buffer } from 'buffer';
 import ExifParser from 'exif-parser';
 import probeImageSize from 'probe-image-size';
+import { Readable } from 'stream';
 
 async function verifyTurnstileToken(token) {
   try {
@@ -22,118 +23,11 @@ async function verifyTurnstileToken(token) {
   }
 }
 
-async function extractMetadata(buffer) {
-  try {
-    // Create a Readable stream from the buffer for probe-image-size
-    const stream = require('stream');
-    const readableStream = new stream.Readable();
-    readableStream.push(buffer);
-    readableStream.push(null);
-
-    // Get basic image info
-    const metadata = await probeImageSize(readableStream);
-    
-    let exifData = {};
-    
-    // Try to extract EXIF data if it's a JPEG image
-    if (metadata.type.toLowerCase() === 'jpg' || metadata.type.toLowerCase() === 'jpeg') {
-      try {
-        const parser = ExifParser.create(buffer);
-        const result = parser.parse();
-        
-        exifData = {
-          tags: result.tags,
-          imageSize: result.imageSize,
-          thumbnailOffset: result.thumbnailOffset,
-          thumbnailLength: result.thumbnailLength,
-          thumbnailType: result.thumbnailType,
-          app1Offset: result.app1Offset,
-        };
-
-        // Extract GPS data if available
-        if (result.tags.GPSLatitude && result.tags.GPSLongitude) {
-          exifData.gps = {
-            latitude: result.tags.GPSLatitude,
-            longitude: result.tags.GPSLongitude,
-            altitude: result.tags.GPSAltitude,
-            latitudeRef: result.tags.GPSLatitudeRef,
-            longitudeRef: result.tags.GPSLongitudeRef,
-            altitudeRef: result.tags.GPSAltitudeRef
-          };
-        }
-
-        // Extract camera info if available
-        if (result.tags.Make || result.tags.Model) {
-          exifData.camera = {
-            make: result.tags.Make,
-            model: result.tags.Model,
-            software: result.tags.Software,
-            fNumber: result.tags.FNumber,
-            exposureTime: result.tags.ExposureTime,
-            ISO: result.tags.ISO,
-            focalLength: result.tags.FocalLength,
-            focalLengthIn35mmFormat: result.tags.FocalLengthIn35mmFormat,
-            flash: result.tags.Flash
-          };
-        }
-        // Add this helper function to convert Unix timestamp to readable date
-        function formatDate(timestamp) {
-          if (!timestamp) return null;
-          // Check if timestamp needs to be multiplied by 1000 (some EXIF timestamps are in seconds)
-          const date = new Date(timestamp * 1000);
-          return date.toISOString();
-        }
-
-        
-        // Extract date information
-        if (result.tags.DateTimeOriginal || result.tags.CreateDate) {
-          exifData.dates = {
-            original: formatDate(result.tags.DateTimeOriginal),
-            created: formatDate(result.tags.CreateDate),
-            modified: formatDate(result.tags.ModifyDate),
-            digitized: formatDate(result.tags.DateTimeDigitized)
-          };
-        }
-
-        return {
-          format: metadata.type,
-          dimensions: {
-            width: metadata.width,
-            height: metadata.height,
-          },
-          imageProperties: {
-            orientation: metadata.orientation,
-            mimeType: metadata.mime,
-          },
-          size: {
-            bytes: buffer.length,
-            formatted: formatFileSize(buffer.length)
-          },
-          exif: exifData
-        };
-      } catch (error) {
-        throw new Error(`Error processing image: ${error.message}`);
-      }
-    } else {
-        return {
-          format: metadata.type,
-          dimensions: {
-            width: metadata.width,
-            height: metadata.height,
-          },
-          imageProperties: {
-            orientation: metadata.orientation,
-            mimeType: metadata.mime,
-          },
-          size: {
-            bytes: buffer.length,
-            formatted: formatFileSize(buffer.length)
-          },
-          exif: exifData
-        }
-    }
-  }
-};
+function formatDate(timestamp) {
+  if (!timestamp) return null;
+  const date = new Date(timestamp * 1000);
+  return date.toISOString();
+}
 
 function formatFileSize(bytes) {
   if (!bytes) return '0 Bytes';
@@ -143,7 +37,85 @@ function formatFileSize(bytes) {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
-const config = {
+async function extractMetadata(buffer) {
+  try {
+    const readableStream = new Readable();
+    readableStream.push(buffer);
+    readableStream.push(null);
+
+    const metadata = await probeImageSize(readableStream);
+    let exifData = {};
+    
+    if (metadata.type.toLowerCase() === 'jpg' || metadata.type.toLowerCase() === 'jpeg') {
+      try {
+        const parser = ExifParser.create(buffer);
+        const result = parser.parse();
+        
+        if (result.tags) {
+          // Extract GPS data if available
+          if (result.tags.GPSLatitude && result.tags.GPSLongitude) {
+            exifData.gps = {
+              latitude: result.tags.GPSLatitude,
+              longitude: result.tags.GPSLongitude,
+              altitude: result.tags.GPSAltitude,
+              latitudeRef: result.tags.GPSLatitudeRef,
+              longitudeRef: result.tags.GPSLongitudeRef,
+              altitudeRef: result.tags.GPSAltitudeRef
+            };
+          }
+
+          // Extract camera info if available
+          if (result.tags.Make || result.tags.Model) {
+            exifData.camera = {
+              make: result.tags.Make,
+              model: result.tags.Model,
+              software: result.tags.Software,
+              fNumber: result.tags.FNumber,
+              exposureTime: result.tags.ExposureTime,
+              ISO: result.tags.ISO,
+              focalLength: result.tags.FocalLength,
+              focalLengthIn35mmFormat: result.tags.FocalLengthIn35mmFormat,
+              flash: result.tags.Flash
+            };
+          }
+
+          // Extract date information
+          if (result.tags.DateTimeOriginal || result.tags.CreateDate) {
+            exifData.dates = {
+              original: formatDate(result.tags.DateTimeOriginal),
+              created: formatDate(result.tags.CreateDate),
+              modified: formatDate(result.tags.ModifyDate),
+              digitized: formatDate(result.tags.DateTimeDigitized)
+            };
+          }
+        }
+      } catch (exifError) {
+        console.error('Error extracting EXIF data:', exifError);
+      }
+    }
+
+    return {
+      format: metadata.type,
+      dimensions: {
+        width: metadata.width,
+        height: metadata.height,
+      },
+      imageProperties: {
+        orientation: metadata.orientation,
+        mimeType: metadata.mime,
+      },
+      size: {
+        bytes: buffer.length,
+        formatted: formatFileSize(buffer.length)
+      },
+      exif: exifData
+    };
+  } catch (error) {
+    throw new Error(`Error processing image: ${error.message}`);
+  }
+}
+
+export const config = {
   api: {
     bodyParser: {
       sizeLimit: '4mb',
@@ -151,7 +123,7 @@ const config = {
   },
 };
 
-const handler = async (req, res) => {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -166,7 +138,6 @@ const handler = async (req, res) => {
   }
 
   try {
-    // Verify CAPTCHA first
     const verification = await verifyTurnstileToken(turnstileToken);
     if (!verification.success) {
       return res.status(400).json({ 
@@ -175,17 +146,13 @@ const handler = async (req, res) => {
       });
     }
 
-    // Fetch the image
     const imageResponse = await fetch(url);
     if (!imageResponse.ok) {
       throw new Error('Failed to fetch image');
     }
 
-    // Convert image to buffer
     const imageBuffer = await imageResponse.arrayBuffer();
     const buffer = Buffer.from(imageBuffer);
-
-    // Extract metadata
     const metadata = await extractMetadata(buffer);
 
     res.status(200).json(metadata);
@@ -196,6 +163,4 @@ const handler = async (req, res) => {
       details: error.message 
     });
   }
-};
-
-module.exports = {config, handler};
+}
