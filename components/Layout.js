@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import styles from '../styles/layout.module.css';
+import { Analytics } from '@vercel/analytics/react';
 
 export default function Layout({ children }) {
   return (
@@ -10,8 +11,12 @@ export default function Layout({ children }) {
       </Head>
       <header className={styles.fixedHeader}>
         <nav>
-          <Link href="/"><a>Home</a></Link>
-          <Link href="/blog"><a>Blog</a></Link>
+          <Link href="/">
+            <a>Home</a>
+          </Link>
+          <Link href="/blog">
+            <a>Blog</a>
+          </Link>
         </nav>
       </header>
       <main className={styles.scrollableContent}>{children}</main>
@@ -20,8 +25,14 @@ export default function Layout({ children }) {
           {/* Add social media icons here */}
         </div>
         <p>© 2024 Image Metadata Extractor. All rights reserved.</p>
-        <Link href="/terms"><a>Terms of Use</a></Link> | <Link href="/privacy"><a>Privacy Policy</a></Link>
+        <Link href="/terms">
+          <a>Terms of Use</a>
+        </Link>{' '}
+        | <Link href="/privacy">
+          <a>Privacy Policy</a>
+        </Link>
       </footer>
+      <Analytics />
     </div>
   );
 }
