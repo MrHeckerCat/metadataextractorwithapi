@@ -1,6 +1,7 @@
 // pages/api/metadata.js
 import { Buffer } from 'buffer';
-import { ExifParser } from 'exif-parser';
+import ExifParser from 'exif-parser';
+import probeImageSize from 'probe-image-size';
 
 async function verifyTurnstileToken(token) {
   try {
@@ -21,17 +22,23 @@ async function verifyTurnstileToken(token) {
   }
 }
 
-async function extractMetadata(imageBuffer) {
+async function extractMetadata(buffer) {
   try {
-    const imageInfo = await import('probe-image-size');
-    const metadata = await imageInfo.default(imageBuffer);
+    // Create a Readable stream from the buffer for probe-image-size
+    const stream = require('stream');
+    const readableStream = new stream.Readable();
+    readableStream.push(buffer);
+    readableStream.push(null);
+
+    // Get basic image info
+    const metadata = await probeImageSize(readableStream);
     
     let exifData = {};
     
     // Try to extract EXIF data if it's a JPEG image
     if (metadata.type.toLowerCase() === 'jpg' || metadata.type.toLowerCase() === 'jpeg') {
       try {
-        const parser = ExifParser.create(imageBuffer);
+        const parser = ExifParser.create(buffer);
         const result = parser.parse();
         
         exifData = {
@@ -95,8 +102,8 @@ async function extractMetadata(imageBuffer) {
         mimeType: metadata.mime,
       },
       size: {
-        bytes: imageBuffer.length,
-        formatted: formatFileSize(imageBuffer.length)
+        bytes: buffer.length,
+        formatted: formatFileSize(buffer.length)
       },
       exif: exifData
     };
