@@ -77,42 +77,61 @@ async function extractMetadata(buffer) {
           };
         }
         // Add this helper function to convert Unix timestamp to readable date
-function formatDate(timestamp) {
-  if (!timestamp) return null;
-  // Check if timestamp needs to be multiplied by 1000 (some EXIF timestamps are in seconds)
-  const date = new Date(timestamp * 1000);
-  return date.toISOString();
-}
+        function formatDate(timestamp) {
+          if (!timestamp) return null;
+          // Check if timestamp needs to be multiplied by 1000 (some EXIF timestamps are in seconds)
+          const date = new Date(timestamp * 1000);
+          return date.toISOString();
+        }
 
         
         // Extract date information
         if (result.tags.DateTimeOriginal || result.tags.CreateDate) {
-  exifData.dates = {
-    original: formatDate(result.tags.DateTimeOriginal),
-    created: formatDate(result.tags.CreateDate),
-    modified: formatDate(result.tags.ModifyDate),
-    digitized: formatDate(result.tags.DateTimeDigitized)
-  };
-}
+          exifData.dates = {
+            original: formatDate(result.tags.DateTimeOriginal),
+            created: formatDate(result.tags.CreateDate),
+            modified: formatDate(result.tags.ModifyDate),
+            digitized: formatDate(result.tags.DateTimeDigitized)
+          };
+        }
 
-    return {
-      format: metadata.type,
-      dimensions: {
-        width: metadata.width,
-        height: metadata.height,
-      },
-      imageProperties: {
-        orientation: metadata.orientation,
-        mimeType: metadata.mime,
-      },
-      size: {
-        bytes: buffer.length,
-        formatted: formatFileSize(buffer.length)
-      },
-      exif: exifData
-    };
-  } catch (error) {
-    throw new Error(`Error processing image: ${error.message}`);
+        return {
+          format: metadata.type,
+          dimensions: {
+            width: metadata.width,
+            height: metadata.height,
+          },
+          imageProperties: {
+            orientation: metadata.orientation,
+            mimeType: metadata.mime,
+          },
+          size: {
+            bytes: buffer.length,
+            formatted: formatFileSize(buffer.length)
+          },
+          exif: exifData
+        };
+      } catch (error) {
+        throw new Error(`Error processing image: ${error.message}`);
+      }
+    } else {
+        return {
+          format: metadata.type,
+          dimensions: {
+            width: metadata.width,
+            height: metadata.height,
+          },
+          imageProperties: {
+            orientation: metadata.orientation,
+            mimeType: metadata.mime,
+          },
+          size: {
+            bytes: buffer.length,
+            formatted: formatFileSize(buffer.length)
+          },
+          exif: exifData
+        };
+    }
   }
 }
 
@@ -124,7 +143,7 @@ function formatFileSize(bytes) {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
-export const config = {
+const config = {
   api: {
     bodyParser: {
       sizeLimit: '4mb',
@@ -132,7 +151,7 @@ export const config = {
   },
 };
 
-export default async function handler(req, res) {
+const handler = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -177,4 +196,6 @@ export default async function handler(req, res) {
       details: error.message 
     });
   }
-}
+};
+
+module.exports = {config, handler};
