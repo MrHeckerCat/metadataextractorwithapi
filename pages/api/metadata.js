@@ -166,8 +166,7 @@ async function extractMetadata(buffer, url) {
        WebStatement: xmpData.WebStatement || "https://www.johndoe.com/license",
        Headline: xmpData.Headline || "Railway Line S45",
        Instructions: xmpData.Instructions || "For editorial use only",
-       CopyrightOwnerID: xmpData.CopyrightOwnerID || "COPYRIGHT-01",
-       DateCreated: ""
+       CopyrightOwnerID: xmpData.CopyrightOwnerID || "COPYRIGHT-01"
      },
      APP14: {
        DCTEncodeVersion: 100,
