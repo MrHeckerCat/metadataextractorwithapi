@@ -16,7 +16,7 @@
     "exif-parser": "^0.1.12",
     "stream": "^0.0.2",
     "@vercel/analytics":"1.0.1",
-    "dms2dec": "^1.1.0"
+    "buffer": "^6.0.3"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
