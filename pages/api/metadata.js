@@ -159,6 +159,7 @@ async function extractMetadata(buffer, url) {
      },
      XMP: {
        XMPToolkit: "Image::ExifTool 12.72",
+       Description: "The railways of the S45 line are running very close to a small street with parking cars",
        LicensorID: xmpData.LicensorID || "PHOTOGRAPHER-01",
        LicensorName: xmpData.LicensorName || "John Doe",
        LicensorURL: xmpData.LicensorURL || "https://www.johndoe.com",
