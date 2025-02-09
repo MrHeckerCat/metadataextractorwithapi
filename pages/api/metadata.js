@@ -127,7 +127,8 @@ async function extractMetadata(buffer, url) {
             Copyright: result.tags.Copyright || "",
             Make: result.tags.Make,
             Model: result.tags.Model,
-            Software: result.tags.Software
+            Software: result.tags.Software,
+            ImageDescription: result.tags.ImageDescription || ""
           };
 
           // Handle dates safely
