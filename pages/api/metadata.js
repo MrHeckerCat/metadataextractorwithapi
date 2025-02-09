@@ -120,6 +120,21 @@ async function extractMetadata(buffer, url) {
    const fileName = path.basename(url);
    const xmpData = extractXMPData(buffer);
 
+   let width = metadata.width || 0;
+   let height = metadata.height || 0;
+
+   // Try getting dimensions from EXIF if probe-image-size failed
+   if (width === 0 || height === 0) {
+     try {
+       const parser = ExifParser.create(buffer);
+       const result = parser.parse();
+       width = result.imageSize.width || 0;
+       height = result.imageSize.height || 0;
+     } catch (error) {
+       console.error('Error getting dimensions from EXIF:', error);
+     }
+   }
+
    let metadataObject = {
      File: {
        Url: url,
@@ -131,8 +146,8 @@ async function extractMetadata(buffer, url) {
        FileType: metadata.type?.toUpperCase() || 'UNKNOWN',
        FileTypeExtension: metadata.type?.toLowerCase() || 'unknown',
        MIMEType: metadata.mime || 'application/octet-stream',
-       ImageWidth: metadata.width || 0,
-       ImageHeight: metadata.height || 0,
+       ImageWidth: width,
+       ImageHeight: height,
        ColorComponents: 3,
        EncodingProcess: "Baseline DCT, Huffman coding",
        BitsPerSample: 8,
@@ -152,7 +167,7 @@ async function extractMetadata(buffer, url) {
        Headline: xmpData.Headline || "Railway Line S45",
        Instructions: xmpData.Instructions || "For editorial use only",
        CopyrightOwnerID: xmpData.CopyrightOwnerID || "COPYRIGHT-01",
-       DateCreated: xmpData.DateCreated || formatDate(result?.tags?.DateTimeOriginal) || formatDate(result?.tags?.CreateDate) || currentDate
+       DateCreated: ""
      },
      APP14: {
        DCTEncodeVersion: 100,
@@ -230,20 +245,18 @@ async function extractMetadata(buffer, url) {
      }
    }
 
-   // Add Composite section with accurate dates
+   // Add Composite section with accurate dates and dimensions
    metadataObject.Composite = {
-     ImageSize: metadata.width && metadata.height ? 
-               `${metadata.width}x${metadata.height}` : "0x0",
-     Megapixels: metadata.width && metadata.height ? 
-                 ((metadata.width * metadata.height) / 1000000).toFixed(2) : "0.00",
+     ImageSize: width && height ? `${width}x${height}` : "0x0",
+     Megapixels: width && height ? ((width * height) / 1000000).toFixed(2) : "0.00",
      DateTimeCreated: exifDates.createDate || 
-                     xmpData.DateCreated || 
+                     formatDate(new Date(xmpData.DateCreated)) || 
                      exifDates.modifyDate || 
                      currentDate,
      DateTimeOriginal: exifDates.originalDate || 
-                     exifDates.createDate || 
-                     xmpData.DateCreated || 
-                     currentDate
+                      exifDates.createDate || 
+                      formatDate(new Date(xmpData.DateCreated)) || 
+                      currentDate
    };
 
    return metadataObject;
