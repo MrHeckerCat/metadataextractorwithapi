@@ -4,6 +4,41 @@ import probeImageSize from 'probe-image-size';
 import { Readable } from 'stream';
 import path from 'path';
 
+function extractXMPData(buffer) {
+  try {
+    const bufferString = buffer.toString('binary');
+    const xmpStart = bufferString.indexOf('<x:xmpmeta');
+    const xmpEnd = bufferString.indexOf('</x:xmpmeta>');
+    
+    if (xmpStart === -1 || xmpEnd === -1) {
+      return {};
+    }
+    
+    const xmpPacket = bufferString.slice(xmpStart, xmpEnd + 12);
+    
+    const getXMPValue = (field) => {
+      const regex = new RegExp(`<${field}>(.*?)</${field}>`);
+      const match = xmpPacket.match(regex);
+      return match ? match[1].trim() : '';
+    };
+
+    return {
+      LicensorID: getXMPValue('LicensorID'),
+      LicensorName: getXMPValue('LicensorName'),
+      LicensorURL: getXMPValue('LicensorURL'),
+      UsageTerms: getXMPValue('UsageTerms'),
+      WebStatement: getXMPValue('WebStatement'),
+      Headline: getXMPValue('Headline'),
+      Instructions: getXMPValue('Instructions'),
+      CopyrightOwnerID: getXMPValue('CopyrightOwnerID'),
+      DateCreated: getXMPValue('DateCreated')
+    };
+  } catch (error) {
+    console.error('Error extracting XMP data:', error);
+    return {};
+  }
+}
+
 async function verifyTurnstileToken(token) {
   try {
     const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
@@ -62,6 +97,7 @@ async function extractMetadata(buffer, url) {
 
     const currentDate = formatDate(new Date());
     const fileName = path.basename(url);
+    const xmpData = extractXMPData(buffer);
 
     let metadataObject = {
       File: {
@@ -87,16 +123,15 @@ async function extractMetadata(buffer, url) {
       },
       XMP: {
         XMPToolkit: "Image::ExifTool 12.72",
-        Description: "The railways of the S45 line are running very close to a small street with parking cars",
-        LicensorID: "",
-        LicensorName: "",
-        LicensorURL: "",
-        UsageTerms: "",
-        WebStatement: "",
-        Headline: "",
-        Instructions: "",
-        CopyrightOwnerID: "",
-        DateCreated: ""
+        LicensorID: xmpData.LicensorID || "",
+        LicensorName: xmpData.LicensorName || "",
+        LicensorURL: xmpData.LicensorURL || "",
+        UsageTerms: xmpData.UsageTerms || "",
+        WebStatement: xmpData.WebStatement || "",
+        Headline: xmpData.Headline || "",
+        Instructions: xmpData.Instructions || "",
+        CopyrightOwnerID: xmpData.CopyrightOwnerID || "",
+        DateCreated: xmpData.DateCreated || ""
       },
       APP14: {
         DCTEncodeVersion: 100,
@@ -129,11 +164,12 @@ async function extractMetadata(buffer, url) {
             ImageDescription: result.tags.ImageDescription || ""
           };
 
-          // Update DateCreated in XMP from EXIF data
-          metadataObject.XMP.DateCreated = formatDate(result.tags.DateTimeOriginal) || 
-                                         formatDate(result.tags.CreateDate) || 
-                                         formatDate(result.tags.ModifyDate) || 
-                                         "";
+          // Update DateCreated in XMP if not already set
+          if (!metadataObject.XMP.DateCreated) {
+            metadataObject.XMP.DateCreated = formatDate(result.tags.DateTimeOriginal) || 
+                                           formatDate(result.tags.CreateDate) || 
+                                           formatDate(result.tags.ModifyDate) || "";
+          }
 
           const modifyDate = formatDate(result.tags.ModifyDate);
           if (modifyDate) metadataObject.EXIF.ModifyDate = modifyDate;
