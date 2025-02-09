@@ -198,7 +198,7 @@ async function extractMetadata(buffer, url) {
        Headline: xmpData.Headline || "Railway Line S45",
        Instructions: xmpData.Instructions || "For editorial use only",
        CopyrightOwnerID: xmpData.CopyrightOwnerID || "COPYRIGHT-01",
-       DateCreated: dates.createDate || dates.originalDate || currentDate
+       DateCreated: dates.createDate || dates.originalDate || ""
      },
      APP14: {
        DCTEncodeVersion: 100,
@@ -269,8 +269,8 @@ async function extractMetadata(buffer, url) {
    metadataObject.Composite = {
      ImageSize: width && height ? `${width}x${height}` : "0x0",
      Megapixels: width && height ? ((width * height) / 1000000).toFixed(2) : "0.00",
-     DateTimeCreated: dates.createDate || dates.originalDate || currentDate,
-     DateTimeOriginal: dates.originalDate || dates.createDate || currentDate
+     DateTimeCreated: dates.createDate || dates.originalDate || "",
+     DateTimeOriginal: dates.originalDate || dates.createDate || ""
    };
 
    return metadataObject;
