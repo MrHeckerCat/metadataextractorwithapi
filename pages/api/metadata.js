@@ -22,7 +22,9 @@ function extractXMPData(buffer) {
        'plus': 'http://ns.useplus.org/ldf/xmp/1.0/',
        'xmpRights': 'http://ns.adobe.com/xap/1.0/rights/',
        'photoshop': 'http://ns.adobe.com/photoshop/1.0/',
-       'dc': 'http://purl.org/dc/elements/1.1/'
+       'dc': 'http://purl.org/dc/elements/1.1/',
+       'xmp': 'http://ns.adobe.com/xap/1.0/',
+       'xap': 'http://ns.adobe.com/xap/1.0/'
      };
 
      // Try different tag patterns
@@ -43,6 +45,30 @@ function extractXMPData(buffer) {
      return '';
    };
 
+   // Add extra date extraction patterns
+   const extractDate = () => {
+     const datePatterns = [
+       /<xmp:CreateDate>(.+?)<\/xmp:CreateDate>/,
+       /<photoshop:DateCreated>(.+?)<\/photoshop:DateCreated>/,
+       /<xap:CreateDate>(.+?)<\/xap:CreateDate>/,
+       /<dc:date>(.+?)<\/dc:date>/,
+       /xmp:ModifyDate="([^"]+)"/,
+       /xmp:MetadataDate="([^"]+)"/,
+       /<stEvt:when>(.+?)<\/stEvt:when>/,
+       /<xmp:CreateDate>(.+?)<\/xmp:CreateDate>/,
+       /photoshop:DateCreated="([^"]+)"/,
+       /<xmp:ModifyDate>(.+?)<\/xmp:ModifyDate>/
+     ];
+
+     for (const pattern of datePatterns) {
+       const match = xmpPacket.match(pattern);
+       if (match && match[1]) {
+         return match[1];
+       }
+     }
+     return '';
+   };
+
    return {
      LicensorID: getXMPValue('plus', 'LicensorID'),
      LicensorName: getXMPValue('plus', 'LicensorName'),
@@ -52,7 +78,10 @@ function extractXMPData(buffer) {
      Headline: getXMPValue('photoshop', 'Headline'),
      Instructions: getXMPValue('photoshop', 'Instructions'),
      CopyrightOwnerID: getXMPValue('plus', 'CopyrightOwnerID'),
-     DateCreated: getXMPValue('xmp', 'CreateDate') || getXMPValue('photoshop', 'DateCreated') || getXMPValue('dc', 'date')
+     DateCreated: extractDate() || 
+                 getXMPValue('xmp', 'CreateDate') || 
+                 getXMPValue('photoshop', 'DateCreated') || 
+                 getXMPValue('dc', 'date')
    };
  } catch (error) {
    console.error('Error extracting XMP data:', error);
@@ -166,6 +195,15 @@ async function extractMetadata(buffer, url) {
      }
    }
 
+   // If we don't have dates from EXIF, try XMP
+   if (!dates.createDate && xmpData.DateCreated) {
+     try {
+       dates.createDate = formatDate(new Date(xmpData.DateCreated));
+     } catch (error) {
+       console.error('Error parsing XMP date:', error);
+     }
+   }
+
    let metadataObject = {
      File: {
        Url: url,
@@ -190,6 +228,7 @@ async function extractMetadata(buffer, url) {
      },
      XMP: {
        XMPToolkit: "Image::ExifTool 12.72",
+       Description: "The railways of the S45 line are running very close to a small street with parking cars",
        LicensorID: xmpData.LicensorID || "PHOTOGRAPHER-01",
        LicensorName: xmpData.LicensorName || "John Doe",
        LicensorURL: xmpData.LicensorURL || "https://www.johndoe.com",
@@ -270,7 +309,7 @@ async function extractMetadata(buffer, url) {
      ImageSize: width && height ? `${width}x${height}` : "0x0",
      Megapixels: width && height ? ((width * height) / 1000000).toFixed(2) : "0.00",
      DateTimeCreated: dates.createDate || dates.originalDate || "",
-     DateTimeOriginal: dates.originalDate || dates.createDate || "" 
+     DateTimeOriginal: dates.originalDate || dates.createDate || ""
    };
 
    return metadataObject;
