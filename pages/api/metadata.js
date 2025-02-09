@@ -159,11 +159,13 @@ async function extractMetadata(buffer, url) {
        APP14Flags0: "[14], Encoded with Blend=1 downsampling",
        APP14Flags1: "(none)",
        ColorTransform: "YCbCr"
-     },
-     Composite: {
-       ImageSize: `${metadata.width || 0}x${metadata.height || 0}`,
-       Megapixels: (((metadata.width || 0) * (metadata.height || 0)) / 1000000).toFixed(1)
      }
+   };
+
+   let exifDates = {
+     originalDate: null,
+     createDate: null,
+     modifyDate: null
    };
 
    if (metadata.type?.toLowerCase() === 'jpg' || metadata.type?.toLowerCase() === 'jpeg') {
@@ -185,14 +187,14 @@ async function extractMetadata(buffer, url) {
            ImageDescription: result.tags.ImageDescription || ""
          };
 
-         const modifyDate = formatDate(result.tags.ModifyDate);
-         if (modifyDate) metadataObject.EXIF.ModifyDate = modifyDate;
+         exifDates.modifyDate = formatDate(result.tags.ModifyDate);
+         if (exifDates.modifyDate) metadataObject.EXIF.ModifyDate = exifDates.modifyDate;
 
-         const createDate = formatDate(result.tags.CreateDate);
-         if (createDate) metadataObject.EXIF.CreateDate = createDate;
+         exifDates.createDate = formatDate(result.tags.CreateDate);
+         if (exifDates.createDate) metadataObject.EXIF.CreateDate = exifDates.createDate;
 
-         const originalDate = formatDate(result.tags.DateTimeOriginal);
-         if (originalDate) metadataObject.EXIF.DateTimeOriginal = originalDate;
+         exifDates.originalDate = formatDate(result.tags.DateTimeOriginal);
+         if (exifDates.originalDate) metadataObject.EXIF.DateTimeOriginal = exifDates.originalDate;
 
          if (result.tags.GPSLatitude && result.tags.GPSLongitude) {
            metadataObject.EXIF.GPSLatitude = result.tags.GPSLatitude;
@@ -227,6 +229,22 @@ async function extractMetadata(buffer, url) {
        console.error('Error extracting EXIF data:', exifError);
      }
    }
+
+   // Add Composite section with accurate dates
+   metadataObject.Composite = {
+     ImageSize: metadata.width && metadata.height ? 
+               `${metadata.width}x${metadata.height}` : "0x0",
+     Megapixels: metadata.width && metadata.height ? 
+                 ((metadata.width * metadata.height) / 1000000).toFixed(2) : "0.00",
+     DateTimeCreated: exifDates.createDate || 
+                     xmpData.DateCreated || 
+                     exifDates.modifyDate || 
+                     currentDate,
+     DateTimeOriginal: exifDates.originalDate || 
+                     exifDates.createDate || 
+                     xmpData.DateCreated || 
+                     currentDate
+   };
 
    return metadataObject;
  } catch (error) {
