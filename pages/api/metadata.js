@@ -99,18 +99,19 @@ async function extractMetadata(buffer, url) {
       },
       XMP: {
         XMPToolkit: "Image::ExifTool 12.72"
-          Headline: "",
-  Instructions: "",
-  CopyrightOwnerID: "",
-  CopyrightOwnerName: "",
-  ImageCreatorID: "",
-  ImageCreatorName: "",
-  LicensorID: "",
-  LicensorName: "",
-  LicensorURL: "",
-  UsageTerms: "",
-  WebStatement: ""
+        Headline: "",
+        Instructions: "",
+        CopyrightOwnerID: "",
+        CopyrightOwnerName: "",
+        ImageCreatorID: "",
+        ImageCreatorName: "",
+        LicensorID: "",
+        LicensorName: "",
+        LicensorURL: "",
+        UsageTerms: "",
+        WebStatement: ""
       },
+  
       APP14: {
         DCTEncodeVersion: 100,
         APP14Flags0: "[14], Encoded with Blend=1 downsampling",
