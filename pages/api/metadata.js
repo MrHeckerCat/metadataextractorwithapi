@@ -3,6 +3,7 @@ import ExifParser from 'exif-parser';
 import probeImageSize from 'probe-image-size';
 import { Readable } from 'stream';
 import path from 'path';
+import { XMPReader } from 'xmp-reader';
 
 async function verifyTurnstileToken(token) {
   try {
@@ -72,6 +73,19 @@ async function extractMetadata(buffer, url) {
       }
     }
 
+    let xmpData = {};
+    try {
+      const xmpReader = new XMPReader(buffer);
+      xmpData = await xmpReader.read();
+      
+      // Handle different XMP namespaces
+      const dc = xmpData['http://purl.org/dc/elements/1.1/'] || {};
+      const xmpRights = xmpData['http://ns.adobe.com/xap/1.0/rights/'] || {};
+      const photoshop = xmpData['http://ns.adobe.com/photoshop/1.0/'] || {};
+    } catch (xmpError) {
+      console.error('Error extracting XMP data:', xmpError);
+    }
+
     const currentDate = formatDate(new Date());
     const fileName = path.basename(url);
 
@@ -99,19 +113,16 @@ async function extractMetadata(buffer, url) {
       },
       XMP: {
         XMPToolkit: "Image::ExifTool 12.72",
-        Headline: "",
-        Instructions: "",
-        CopyrightOwnerID: "",
-        CopyrightOwnerName: "",
-        ImageCreatorID: "",
-        ImageCreatorName: "",
-        LicensorID: "",
-        LicensorName: "",
-        LicensorURL: "",
-        UsageTerms: "",
-        WebStatement: ""
+        LicensorID: xmpData?.LicensorID || "",
+        LicensorName: xmpData?.LicensorName || "",
+        LicensorURL: xmpData?.LicensorURL || "",
+        UsageTerms: xmpData?.UsageTerms || "",
+        WebStatement: xmpData?.WebStatement || "",
+        Headline: xmpData?.Headline || "",
+        Instructions: xmpData?.Instructions || "",
+        CopyrightOwnerID: xmpData?.CopyrightOwnerID || "",
+        DateCreated: currentDate
       },
-  
       APP14: {
         DCTEncodeVersion: 100,
         APP14Flags0: "[14], Encoded with Blend=1 downsampling",
@@ -143,7 +154,6 @@ async function extractMetadata(buffer, url) {
             ImageDescription: result.tags.ImageDescription || ""
           };
 
-          // Handle dates safely
           const modifyDate = formatDate(result.tags.ModifyDate);
           if (modifyDate) metadataObject.EXIF.ModifyDate = modifyDate;
 
@@ -171,13 +181,11 @@ async function extractMetadata(buffer, url) {
           if (result.tags.Artist) {
             metadataObject.IPTC["By-line"] = result.tags.Artist;
             metadataObject.XMP.Creator = result.tags.Artist;
-            metadataObject.XMP.ImageCreatorName = result.tags.Artist;
           }
 
           if (result.tags.Copyright) {
             metadataObject.IPTC.CopyrightNotice = result.tags.Copyright;
             metadataObject.XMP.Rights = result.tags.Copyright;
-            metadataObject.XMP.CopyrightOwnerName = result.tags.Copyright;
           }
 
           if (result.imageSize) {
