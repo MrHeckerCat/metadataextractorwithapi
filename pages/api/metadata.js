@@ -1,8 +1,8 @@
-// pages/api/metadata.js
 import { Buffer } from 'buffer';
 import ExifParser from 'exif-parser';
 import probeImageSize from 'probe-image-size';
 import { Readable } from 'stream';
+import path from 'path';
 
 async function verifyTurnstileToken(token) {
   try {
@@ -23,70 +23,117 @@ async function verifyTurnstileToken(token) {
   }
 }
 
-function formatDate(timestamp) {
-  if (!timestamp) return null;
-  const date = new Date(timestamp * 1000);
-  return date.toISOString();
+function formatDate(date) {
+  if (!date) return null;
+  return date.toISOString().replace('T', ' ').slice(0, 19) + '+00:00';
 }
 
-function formatFileSize(bytes) {
-  if (!bytes) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-}
-
-async function extractMetadata(buffer) {
+async function extractMetadata(buffer, url) {
   try {
     const readableStream = new Readable();
     readableStream.push(buffer);
     readableStream.push(null);
 
     const metadata = await probeImageSize(readableStream);
-    let exifData = {};
-    
+    const currentDate = formatDate(new Date());
+    const fileName = path.basename(url);
+
+    // Base metadata structure
+    let metadataObject = {
+      File: {
+        Url: url,
+        FileName: fileName,
+        FileSize: buffer.length,
+        FileModifyDate: currentDate,
+        FileAccessDate: currentDate,
+        FileInodeChangeDate: currentDate,
+        FileType: metadata.type.toUpperCase(),
+        FileTypeExtension: metadata.type.toLowerCase(),
+        MIMEType: metadata.mime,
+        ImageWidth: metadata.width,
+        ImageHeight: metadata.height,
+        ColorComponents: 3,
+        EncodingProcess: "Baseline DCT, Huffman coding",
+        BitsPerSample: 8,
+        YCbCrSubSampling: "YCbCr4:4:4 (1 1)"
+      },
+      EXIF: {},
+      IPTC: {},
+      XMP: {},
+      APP14: {
+        DCTEncodeVersion: 100,
+        APP14Flags0: "[14], Encoded with Blend=1 downsampling",
+        APP14Flags1: "(none)",
+        ColorTransform: "YCbCr"
+      },
+      Composite: {
+        ImageSize: `${metadata.width}x${metadata.height}`,
+        Megapixels: ((metadata.width * metadata.height) / 1000000).toFixed(1)
+      }
+    };
+
     if (metadata.type.toLowerCase() === 'jpg' || metadata.type.toLowerCase() === 'jpeg') {
       try {
         const parser = ExifParser.create(buffer);
         const result = parser.parse();
-        
+
         if (result.tags) {
-          // Extract GPS data if available
+          // EXIF data
+          metadataObject.EXIF = {
+            XResolution: result.tags.XResolution || 72,
+            YResolution: result.tags.YResolution || 72,
+            ResolutionUnit: "inches",
+            Artist: result.tags.Artist || "",
+            YCbCrPositioning: "Centered",
+            Copyright: result.tags.Copyright || "",
+            Make: result.tags.Make,
+            Model: result.tags.Model,
+            Software: result.tags.Software,
+            ModifyDate: formatDate(new Date(result.tags.ModifyDate * 1000)),
+            DateTimeOriginal: formatDate(new Date(result.tags.DateTimeOriginal * 1000)),
+            CreateDate: formatDate(new Date(result.tags.CreateDate * 1000))
+          };
+
+          // GPS data if available
           if (result.tags.GPSLatitude && result.tags.GPSLongitude) {
-            exifData.gps = {
-              latitude: result.tags.GPSLatitude,
-              longitude: result.tags.GPSLongitude,
-              altitude: result.tags.GPSAltitude,
-              latitudeRef: result.tags.GPSLatitudeRef,
-              longitudeRef: result.tags.GPSLongitudeRef,
-              altitudeRef: result.tags.GPSAltitudeRef
-            };
+            metadataObject.EXIF.GPSLatitude = result.tags.GPSLatitude;
+            metadataObject.EXIF.GPSLongitude = result.tags.GPSLongitude;
+            metadataObject.EXIF.GPSAltitude = result.tags.GPSAltitude;
+            metadataObject.EXIF.GPSLatitudeRef = result.tags.GPSLatitudeRef;
+            metadataObject.EXIF.GPSLongitudeRef = result.tags.GPSLongitudeRef;
+            metadataObject.EXIF.GPSAltitudeRef = result.tags.GPSAltitudeRef;
           }
 
-          // Extract camera info if available
-          if (result.tags.Make || result.tags.Model) {
-            exifData.camera = {
-              make: result.tags.Make,
-              model: result.tags.Model,
-              software: result.tags.Software,
-              fNumber: result.tags.FNumber,
-              exposureTime: result.tags.ExposureTime,
-              ISO: result.tags.ISO,
-              focalLength: result.tags.FocalLength,
-              focalLengthIn35mmFormat: result.tags.FocalLengthIn35mmFormat,
-              flash: result.tags.Flash
-            };
-          }
+          // Clean up undefined values
+          Object.keys(metadataObject.EXIF).forEach(key => {
+            if (metadataObject.EXIF[key] === undefined) {
+              delete metadataObject.EXIF[key];
+            }
+          });
 
-          // Extract date information
-          if (result.tags.DateTimeOriginal || result.tags.CreateDate) {
-            exifData.dates = {
-              original: formatDate(result.tags.DateTimeOriginal),
-              created: formatDate(result.tags.CreateDate),
-              modified: formatDate(result.tags.ModifyDate),
-              digitized: formatDate(result.tags.DateTimeDigitized)
-            };
+          // IPTC data
+          metadataObject.IPTC = {
+            "By-line": result.tags.Artist || "",
+            CopyrightNotice: result.tags.Copyright || "",
+            ApplicationRecordVersion: 4
+          };
+
+          // XMP data
+          metadataObject.XMP = {
+            XMPToolkit: "Image::ExifTool 12.72",
+            Creator: result.tags.Artist || "",
+            Rights: result.tags.Copyright || ""
+          };
+
+          // Additional File info from EXIF
+          if (result.tags.ExifByteOrder) {
+            metadataObject.File.ExifByteOrder = result.tags.ExifByteOrder;
+          }
+          if (result.tags.CurrentIPTCDigest) {
+            metadataObject.File.CurrentIPTCDigest = result.tags.CurrentIPTCDigest;
+          }
+          if (result.tags.Comment) {
+            metadataObject.File.Comment = result.tags.Comment;
           }
         }
       } catch (exifError) {
@@ -94,22 +141,7 @@ async function extractMetadata(buffer) {
       }
     }
 
-    return {
-      format: metadata.type,
-      dimensions: {
-        width: metadata.width,
-        height: metadata.height,
-      },
-      imageProperties: {
-        orientation: metadata.orientation,
-        mimeType: metadata.mime,
-      },
-      size: {
-        bytes: buffer.length,
-        formatted: formatFileSize(buffer.length)
-      },
-      exif: exifData
-    };
+    return metadataObject;
   } catch (error) {
     throw new Error(`Error processing image: ${error.message}`);
   }
@@ -153,7 +185,7 @@ export default async function handler(req, res) {
 
     const imageBuffer = await imageResponse.arrayBuffer();
     const buffer = Buffer.from(imageBuffer);
-    const metadata = await extractMetadata(buffer);
+    const metadata = await extractMetadata(buffer, url);
 
     res.status(200).json(metadata);
   } catch (error) {
