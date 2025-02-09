@@ -123,15 +123,47 @@ async function extractMetadata(buffer, url) {
    let width = metadata.width || 0;
    let height = metadata.height || 0;
 
-   // Try getting dimensions from EXIF if probe-image-size failed
-   if (width === 0 || height === 0) {
+   let dates = {
+     originalDate: null,
+     createDate: null,
+     modifyDate: null
+   };
+
+   // Extract dates from EXIF
+   if (metadata.type?.toLowerCase() === 'jpg' || metadata.type?.toLowerCase() === 'jpeg') {
      try {
        const parser = ExifParser.create(buffer);
        const result = parser.parse();
-       width = result.imageSize.width || 0;
-       height = result.imageSize.height || 0;
+
+       if (result.tags) {
+         // Extract EXIF dates
+         if (result.tags.DateTimeOriginal) {
+           dates.originalDate = formatDate(result.tags.DateTimeOriginal);
+         }
+         if (result.tags.CreateDate) {
+           dates.createDate = formatDate(result.tags.CreateDate);
+         }
+         if (result.tags.ModifyDate) {
+           dates.modifyDate = formatDate(result.tags.ModifyDate);
+         }
+       }
+
+       // Try getting dimensions from EXIF if probe-image-size failed
+       if (width === 0 || height === 0) {
+         width = result.imageSize.width || 0;
+         height = result.imageSize.height || 0;
+       }
      } catch (error) {
-       console.error('Error getting dimensions from EXIF:', error);
+       console.error('Error getting EXIF data:', error);
+     }
+   }
+
+   // Extract XMP date if EXIF dates aren't available
+   if (!dates.createDate && xmpData.DateCreated) {
+     try {
+       dates.createDate = formatDate(new Date(xmpData.DateCreated));
+     } catch (error) {
+       console.error('Error parsing XMP date:', error);
      }
    }
 
@@ -166,7 +198,8 @@ async function extractMetadata(buffer, url) {
        WebStatement: xmpData.WebStatement || "https://www.johndoe.com/license",
        Headline: xmpData.Headline || "Railway Line S45",
        Instructions: xmpData.Instructions || "For editorial use only",
-       CopyrightOwnerID: xmpData.CopyrightOwnerID || "COPYRIGHT-01"
+       CopyrightOwnerID: xmpData.CopyrightOwnerID || "COPYRIGHT-01",
+       DateCreated: dates.createDate || dates.originalDate || ""
      },
      APP14: {
        DCTEncodeVersion: 100,
@@ -174,12 +207,6 @@ async function extractMetadata(buffer, url) {
        APP14Flags1: "(none)",
        ColorTransform: "YCbCr"
      }
-   };
-
-   let exifDates = {
-     originalDate: null,
-     createDate: null,
-     modifyDate: null
    };
 
    if (metadata.type?.toLowerCase() === 'jpg' || metadata.type?.toLowerCase() === 'jpeg') {
@@ -201,14 +228,9 @@ async function extractMetadata(buffer, url) {
            ImageDescription: result.tags.ImageDescription || ""
          };
 
-         exifDates.modifyDate = formatDate(result.tags.ModifyDate);
-         if (exifDates.modifyDate) metadataObject.EXIF.ModifyDate = exifDates.modifyDate;
-
-         exifDates.createDate = formatDate(result.tags.CreateDate);
-         if (exifDates.createDate) metadataObject.EXIF.CreateDate = exifDates.createDate;
-
-         exifDates.originalDate = formatDate(result.tags.DateTimeOriginal);
-         if (exifDates.originalDate) metadataObject.EXIF.DateTimeOriginal = exifDates.originalDate;
+         if (dates.modifyDate) metadataObject.EXIF.ModifyDate = dates.modifyDate;
+         if (dates.createDate) metadataObject.EXIF.CreateDate = dates.createDate;
+         if (dates.originalDate) metadataObject.EXIF.DateTimeOriginal = dates.originalDate;
 
          if (result.tags.GPSLatitude && result.tags.GPSLongitude) {
            metadataObject.EXIF.GPSLatitude = result.tags.GPSLatitude;
@@ -244,18 +266,12 @@ async function extractMetadata(buffer, url) {
      }
    }
 
-   // Add Composite section with accurate dates and dimensions
+   // Add Composite section with accurate dates
    metadataObject.Composite = {
      ImageSize: width && height ? `${width}x${height}` : "0x0",
      Megapixels: width && height ? ((width * height) / 1000000).toFixed(2) : "0.00",
-     DateTimeCreated: exifDates.createDate || 
-                     formatDate(new Date(xmpData.DateCreated)) || 
-                     exifDates.modifyDate || 
-                     currentDate,
-     DateTimeOriginal: exifDates.originalDate || 
-                      exifDates.createDate || 
-                      formatDate(new Date(xmpData.DateCreated)) || 
-                      currentDate
+     DateTimeCreated: dates.createDate || dates.originalDate || "",
+     DateTimeOriginal: dates.originalDate || dates.createDate || ""
    };
 
    return metadataObject;
