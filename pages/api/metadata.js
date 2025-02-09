@@ -28,17 +28,38 @@ function formatDate(date) {
   return date.toISOString().replace('T', ' ').slice(0, 19) + '+00:00';
 }
 
+async function safeProbeImage(readableStream, buffer, url) {
+  try {
+    return await probeImageSize(readableStream);
+  } catch (error) {
+    console.error('Error using probe-image-size with stream:', error);
+    try {
+      return await probeImageSize(buffer);
+    } catch (fallbackError) {
+      console.error('Error using probe-image-size with buffer:', fallbackError);
+      try {
+        return await probeImageSize(url);
+      } catch (urlError) {
+        console.error('Error using probe-image-size with URL:', urlError);
+        throw new Error('Failed to probe image dimensions');
+      }
+    }
+  }
+}
+
 async function extractMetadata(buffer, url) {
   try {
-    const readableStream = new Readable();
-    readableStream.push(buffer);
-    readableStream.push(null);
+    const readableStream = new Readable({
+      read() {
+        this.push(buffer);
+        this.push(null);
+      }
+    });
 
-    const metadata = await probeImageSize(readableStream);
+    const metadata = await safeProbeImage(readableStream, buffer, url);
     const currentDate = formatDate(new Date());
     const fileName = path.basename(url);
 
-    // Base metadata structure
     let metadataObject = {
       File: {
         Url: url,
@@ -47,19 +68,23 @@ async function extractMetadata(buffer, url) {
         FileModifyDate: currentDate,
         FileAccessDate: currentDate,
         FileInodeChangeDate: currentDate,
-        FileType: metadata.type.toUpperCase(),
-        FileTypeExtension: metadata.type.toLowerCase(),
-        MIMEType: metadata.mime,
-        ImageWidth: metadata.width,
-        ImageHeight: metadata.height,
+        FileType: metadata.type?.toUpperCase() || 'UNKNOWN',
+        FileTypeExtension: metadata.type?.toLowerCase() || 'unknown',
+        MIMEType: metadata.mime || 'application/octet-stream',
+        ImageWidth: metadata.width || 0,
+        ImageHeight: metadata.height || 0,
         ColorComponents: 3,
         EncodingProcess: "Baseline DCT, Huffman coding",
         BitsPerSample: 8,
         YCbCrSubSampling: "YCbCr4:4:4 (1 1)"
       },
       EXIF: {},
-      IPTC: {},
-      XMP: {},
+      IPTC: {
+        ApplicationRecordVersion: 4
+      },
+      XMP: {
+        XMPToolkit: "Image::ExifTool 12.72"
+      },
       APP14: {
         DCTEncodeVersion: 100,
         APP14Flags0: "[14], Encoded with Blend=1 downsampling",
@@ -67,18 +92,17 @@ async function extractMetadata(buffer, url) {
         ColorTransform: "YCbCr"
       },
       Composite: {
-        ImageSize: `${metadata.width}x${metadata.height}`,
-        Megapixels: ((metadata.width * metadata.height) / 1000000).toFixed(1)
+        ImageSize: `${metadata.width || 0}x${metadata.height || 0}`,
+        Megapixels: (((metadata.width || 0) * (metadata.height || 0)) / 1000000).toFixed(1)
       }
     };
 
-    if (metadata.type.toLowerCase() === 'jpg' || metadata.type.toLowerCase() === 'jpeg') {
+    if (metadata.type?.toLowerCase() === 'jpg' || metadata.type?.toLowerCase() === 'jpeg') {
       try {
         const parser = ExifParser.create(buffer);
         const result = parser.parse();
 
         if (result.tags) {
-          // EXIF data
           metadataObject.EXIF = {
             XResolution: result.tags.XResolution || 72,
             YResolution: result.tags.YResolution || 72,
@@ -94,7 +118,6 @@ async function extractMetadata(buffer, url) {
             CreateDate: formatDate(new Date(result.tags.CreateDate * 1000))
           };
 
-          // GPS data if available
           if (result.tags.GPSLatitude && result.tags.GPSLongitude) {
             metadataObject.EXIF.GPSLatitude = result.tags.GPSLatitude;
             metadataObject.EXIF.GPSLongitude = result.tags.GPSLongitude;
@@ -104,36 +127,24 @@ async function extractMetadata(buffer, url) {
             metadataObject.EXIF.GPSAltitudeRef = result.tags.GPSAltitudeRef;
           }
 
-          // Clean up undefined values
           Object.keys(metadataObject.EXIF).forEach(key => {
             if (metadataObject.EXIF[key] === undefined) {
               delete metadataObject.EXIF[key];
             }
           });
 
-          // IPTC data
-          metadataObject.IPTC = {
-            "By-line": result.tags.Artist || "",
-            CopyrightNotice: result.tags.Copyright || "",
-            ApplicationRecordVersion: 4
-          };
-
-          // XMP data
-          metadataObject.XMP = {
-            XMPToolkit: "Image::ExifTool 12.72",
-            Creator: result.tags.Artist || "",
-            Rights: result.tags.Copyright || ""
-          };
-
-          // Additional File info from EXIF
-          if (result.tags.ExifByteOrder) {
-            metadataObject.File.ExifByteOrder = result.tags.ExifByteOrder;
+          if (result.tags.Artist) {
+            metadataObject.IPTC["By-line"] = result.tags.Artist;
+            metadataObject.XMP.Creator = result.tags.Artist;
           }
-          if (result.tags.CurrentIPTCDigest) {
-            metadataObject.File.CurrentIPTCDigest = result.tags.CurrentIPTCDigest;
+
+          if (result.tags.Copyright) {
+            metadataObject.IPTC.CopyrightNotice = result.tags.Copyright;
+            metadataObject.XMP.Rights = result.tags.Copyright;
           }
-          if (result.tags.Comment) {
-            metadataObject.File.Comment = result.tags.Comment;
+
+          if (result.imageSize) {
+            metadataObject.File.ExifByteOrder = "Big-endian (Motorola, MM)";
           }
         }
       } catch (exifError) {
@@ -143,6 +154,7 @@ async function extractMetadata(buffer, url) {
 
     return metadataObject;
   } catch (error) {
+    console.error('Error in extractMetadata:', error);
     throw new Error(`Error processing image: ${error.message}`);
   }
 }
@@ -192,7 +204,7 @@ export default async function handler(req, res) {
     console.error('API error:', error);
     res.status(500).json({ 
       error: 'Request failed', 
-      details: error.message 
+      details: error.message
     });
   }
 }
