@@ -3,7 +3,7 @@ import ExifParser from 'exif-parser';
 import probeImageSize from 'probe-image-size';
 import { Readable } from 'stream';
 import path from 'path';
-import { XMPReader } from 'xmp-reader';
+import { parseXmp } from 'dms2dec';
 
 async function verifyTurnstileToken(token) {
   try {
@@ -73,10 +73,13 @@ async function extractMetadata(buffer, url) {
       }
     }
 
-    let xmpData = {};
-    try {
-      const xmpReader = new XMPReader(buffer);
-      xmpData = await xmpReader.read();
+    
+let xmpData = {};
+try {
+  xmpData = parseXmp(buffer);
+} catch (xmpError) {
+  console.error('Error extracting XMP data:', xmpError);
+}
       
       // Handle different XMP namespaces
       const dc = xmpData['http://purl.org/dc/elements/1.1/'] || {};
@@ -112,17 +115,21 @@ async function extractMetadata(buffer, url) {
         ApplicationRecordVersion: 4
       },
       XMP: {
-        XMPToolkit: "Image::ExifTool 12.72",
-        LicensorID: xmpData?.LicensorID || "",
-        LicensorName: xmpData?.LicensorName || "",
-        LicensorURL: xmpData?.LicensorURL || "",
-        UsageTerms: xmpData?.UsageTerms || "",
-        WebStatement: xmpData?.WebStatement || "",
-        Headline: xmpData?.Headline || "",
-        Instructions: xmpData?.Instructions || "",
-        CopyrightOwnerID: xmpData?.CopyrightOwnerID || "",
-        DateCreated: currentDate
-      },
+  XMPToolkit: "Image::ExifTool 12.72",
+  LicensorID: xmpData?.LicensorID || "",
+  LicensorName: xmpData?.LicensorName || "",
+  LicensorURL: xmpData?.LicensorURL || "",
+  UsageTerms: xmpData?.UsageTerms || "",
+  WebStatement: xmpData?.WebStatement || "",
+  Headline: xmpData?.Headline || "",
+  Instructions: xmpData?.Instructions || "",
+  CopyrightOwnerID: xmpData?.CopyrightOwnerID || "",
+  DateCreated: formatDate(result?.tags?.DateTimeOriginal) || 
+               formatDate(result?.tags?.CreateDate) || 
+               formatDate(xmpData?.DateCreated) || 
+               formatDate(result?.tags?.ModifyDate) || 
+               ""
+},
       APP14: {
         DCTEncodeVersion: 100,
         APP14Flags0: "[14], Encoded with Blend=1 downsampling",
