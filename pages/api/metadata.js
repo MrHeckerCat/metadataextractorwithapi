@@ -1,5 +1,5 @@
 import { Buffer } from 'buffer';
-import ExifReader from 'exifreader';
+import ExifParser from 'exif-parser';
 import probeImageSize from 'probe-image-size';
 import { Readable } from 'stream';
 import path from 'path';
@@ -79,6 +79,28 @@ async function verifyTurnstileToken(token) {
  }
 }
 
+function formatDate(date) {
+ if (!date) return null;
+ try {
+   if (typeof date === 'number') {
+     if (date < 0 || !Number.isFinite(date)) {
+       return null;
+     }
+     const timestamp = date * (date < 10000000000 ? 1000 : 1);
+     date = new Date(timestamp);
+   }
+   
+   if (!(date instanceof Date) || isNaN(date.getTime())) {
+     return null;
+   }
+   
+   return date.toISOString().replace('T', ' ').slice(0, 19) + '+00:00';
+ } catch (error) {
+   console.error('Error formatting date:', error);
+   return null;
+ }
+}
+
 async function extractMetadata(buffer, url) {
  try {
    let metadata;
@@ -94,6 +116,7 @@ async function extractMetadata(buffer, url) {
      };
    }
 
+   const currentDate = formatDate(new Date());
    const fileName = path.basename(url);
    const xmpData = extractXMPData(buffer);
 
@@ -106,32 +129,41 @@ async function extractMetadata(buffer, url) {
      modifyDate: null
    };
 
-   // Extract dates using ExifReader
-   try {
-     const tags = await ExifReader.load(buffer);
-     
-     // Try different date fields in order of preference
-     const dateCreated = 
-       tags['DateTimeOriginal']?.description ||
-       tags['CreateDate']?.description ||
-       tags['DateTime']?.description ||
-       tags['DateTimeDigitized']?.description;
+   // Extract dates from EXIF
+   if (metadata.type?.toLowerCase() === 'jpg' || metadata.type?.toLowerCase() === 'jpeg') {
+     try {
+       const parser = ExifParser.create(buffer);
+       const result = parser.parse();
 
-     const dateOriginal = 
-       tags['DateTimeOriginal']?.description ||
-       tags['DateTime']?.description ||
-       tags['DateTimeDigitized']?.description;
+       if (result.tags) {
+         // Get raw date values
+         const originalDateTime = result.tags.DateTimeOriginal;
+         const createDateTime = result.tags.CreateDate;
+         const modifyDateTime = result.tags.ModifyDate;
 
-     if (dateCreated) dates.createDate = dateCreated;
-     if (dateOriginal) dates.originalDate = dateOriginal;
-     
-     // Try getting dimensions from EXIF if probe-image-size failed
-     if (width === 0 || height === 0) {
-       width = tags['ImageWidth']?.value || 0;
-       height = tags['ImageHeight']?.value || 0;
+         // Convert EXIF dates to proper format
+         if (originalDateTime) {
+           const date = new Date(originalDateTime * 1000);
+           dates.originalDate = date.toISOString().replace('T', ' ').slice(0, 19) + '+00:00';
+         }
+         if (createDateTime) {
+           const date = new Date(createDateTime * 1000);
+           dates.createDate = date.toISOString().replace('T', ' ').slice(0, 19) + '+00:00';
+         }
+         if (modifyDateTime) {
+           const date = new Date(modifyDateTime * 1000);
+           dates.modifyDate = date.toISOString().replace('T', ' ').slice(0, 19) + '+00:00';
+         }
+
+         // Try getting dimensions from EXIF if probe-image-size failed
+         if (width === 0 || height === 0) {
+           width = result.imageSize.width || 0;
+           height = result.imageSize.height || 0;
+         }
+       }
+     } catch (error) {
+       console.error('Error getting EXIF data:', error);
      }
-   } catch (error) {
-     console.error('ExifReader error:', error);
    }
 
    let metadataObject = {
@@ -139,6 +171,9 @@ async function extractMetadata(buffer, url) {
        Url: url,
        FileName: fileName,
        FileSize: buffer.length,
+       FileModifyDate: currentDate,
+       FileAccessDate: currentDate,
+       FileInodeChangeDate: currentDate,
        FileType: metadata.type?.toUpperCase() || 'UNKNOWN',
        FileTypeExtension: metadata.type?.toLowerCase() || 'unknown',
        MIMEType: metadata.mime || 'application/octet-stream',
@@ -155,7 +190,6 @@ async function extractMetadata(buffer, url) {
      },
      XMP: {
        XMPToolkit: "Image::ExifTool 12.72",
-       Description: "The railways of the S45 line are running very close to a small street with parking cars",
        LicensorID: xmpData.LicensorID || "PHOTOGRAPHER-01",
        LicensorName: xmpData.LicensorName || "John Doe",
        LicensorURL: xmpData.LicensorURL || "https://www.johndoe.com",
@@ -164,7 +198,7 @@ async function extractMetadata(buffer, url) {
        Headline: xmpData.Headline || "Railway Line S45",
        Instructions: xmpData.Instructions || "For editorial use only",
        CopyrightOwnerID: xmpData.CopyrightOwnerID || "COPYRIGHT-01",
-       DateCreated: dates.createDate || ""
+       DateCreated: dates.createDate || dates.originalDate || ""
      },
      APP14: {
        DCTEncodeVersion: 100,
@@ -174,12 +208,69 @@ async function extractMetadata(buffer, url) {
      }
    };
 
-   // Add Composite section with accurate dates and dimensions
+   if (metadata.type?.toLowerCase() === 'jpg' || metadata.type?.toLowerCase() === 'jpeg') {
+     try {
+       const parser = ExifParser.create(buffer);
+       const result = parser.parse();
+
+       if (result.tags) {
+         metadataObject.EXIF = {
+           XResolution: result.tags.XResolution || 72,
+           YResolution: result.tags.YResolution || 72,
+           ResolutionUnit: "inches",
+           Artist: result.tags.Artist || "",
+           YCbCrPositioning: "Centered",
+           Copyright: result.tags.Copyright || "",
+           Make: result.tags.Make,
+           Model: result.tags.Model,
+           Software: result.tags.Software,
+           ImageDescription: result.tags.ImageDescription || ""
+         };
+
+         if (dates.modifyDate) metadataObject.EXIF.ModifyDate = dates.modifyDate;
+         if (dates.createDate) metadataObject.EXIF.CreateDate = dates.createDate;
+         if (dates.originalDate) metadataObject.EXIF.DateTimeOriginal = dates.originalDate;
+
+         if (result.tags.GPSLatitude && result.tags.GPSLongitude) {
+           metadataObject.EXIF.GPSLatitude = result.tags.GPSLatitude;
+           metadataObject.EXIF.GPSLongitude = result.tags.GPSLongitude;
+           metadataObject.EXIF.GPSAltitude = result.tags.GPSAltitude;
+           metadataObject.EXIF.GPSLatitudeRef = result.tags.GPSLatitudeRef;
+           metadataObject.EXIF.GPSLongitudeRef = result.tags.GPSLongitudeRef;
+           metadataObject.EXIF.GPSAltitudeRef = result.tags.GPSAltitudeRef;
+         }
+
+         Object.keys(metadataObject.EXIF).forEach(key => {
+           if (metadataObject.EXIF[key] === undefined) {
+             delete metadataObject.EXIF[key];
+           }
+         });
+
+         if (result.tags.Artist) {
+           metadataObject.IPTC["By-line"] = result.tags.Artist;
+           metadataObject.XMP.Creator = result.tags.Artist;
+         }
+
+         if (result.tags.Copyright) {
+           metadataObject.IPTC.CopyrightNotice = result.tags.Copyright;
+           metadataObject.XMP.Rights = result.tags.Copyright;
+         }
+
+         if (result.imageSize) {
+           metadataObject.File.ExifByteOrder = "Big-endian (Motorola, MM)";
+         }
+       }
+     } catch (exifError) {
+       console.error('Error extracting EXIF data:', exifError);
+     }
+   }
+
+   // Add Composite section with accurate dates
    metadataObject.Composite = {
      ImageSize: width && height ? `${width}x${height}` : "0x0",
      Megapixels: width && height ? ((width * height) / 1000000).toFixed(2) : "0.00",
-     DateTimeCreated: dates.createDate || "",
-     DateTimeOriginal: dates.originalDate || ""
+     DateTimeCreated: dates.createDate || dates.originalDate || "",
+     DateTimeOriginal: dates.originalDate || dates.createDate || "" 
    };
 
    return metadataObject;
