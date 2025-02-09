@@ -136,34 +136,33 @@ async function extractMetadata(buffer, url) {
        const result = parser.parse();
 
        if (result.tags) {
-         // Extract EXIF dates
-         if (result.tags.DateTimeOriginal) {
-           dates.originalDate = formatDate(result.tags.DateTimeOriginal);
-         }
-         if (result.tags.CreateDate) {
-           dates.createDate = formatDate(result.tags.CreateDate);
-         }
-         if (result.tags.ModifyDate) {
-           dates.modifyDate = formatDate(result.tags.ModifyDate);
-         }
-       }
+         // Get raw date values
+         const originalDateTime = result.tags.DateTimeOriginal;
+         const createDateTime = result.tags.CreateDate;
+         const modifyDateTime = result.tags.ModifyDate;
 
-       // Try getting dimensions from EXIF if probe-image-size failed
-       if (width === 0 || height === 0) {
-         width = result.imageSize.width || 0;
-         height = result.imageSize.height || 0;
+         // Convert EXIF dates to proper format
+         if (originalDateTime) {
+           const date = new Date(originalDateTime * 1000);
+           dates.originalDate = date.toISOString().replace('T', ' ').slice(0, 19) + '+00:00';
+         }
+         if (createDateTime) {
+           const date = new Date(createDateTime * 1000);
+           dates.createDate = date.toISOString().replace('T', ' ').slice(0, 19) + '+00:00';
+         }
+         if (modifyDateTime) {
+           const date = new Date(modifyDateTime * 1000);
+           dates.modifyDate = date.toISOString().replace('T', ' ').slice(0, 19) + '+00:00';
+         }
+
+         // Try getting dimensions from EXIF if probe-image-size failed
+         if (width === 0 || height === 0) {
+           width = result.imageSize.width || 0;
+           height = result.imageSize.height || 0;
+         }
        }
      } catch (error) {
        console.error('Error getting EXIF data:', error);
-     }
-   }
-
-   // Extract XMP date if EXIF dates aren't available
-   if (!dates.createDate && xmpData.DateCreated) {
-     try {
-       dates.createDate = formatDate(new Date(xmpData.DateCreated));
-     } catch (error) {
-       console.error('Error parsing XMP date:', error);
      }
    }
 
@@ -199,7 +198,7 @@ async function extractMetadata(buffer, url) {
        Headline: xmpData.Headline || "Railway Line S45",
        Instructions: xmpData.Instructions || "For editorial use only",
        CopyrightOwnerID: xmpData.CopyrightOwnerID || "COPYRIGHT-01",
-       DateCreated: dates.createDate || dates.originalDate || ""
+       DateCreated: dates.createDate || dates.originalDate || currentDate
      },
      APP14: {
        DCTEncodeVersion: 100,
@@ -270,8 +269,8 @@ async function extractMetadata(buffer, url) {
    metadataObject.Composite = {
      ImageSize: width && height ? `${width}x${height}` : "0x0",
      Megapixels: width && height ? ((width * height) / 1000000).toFixed(2) : "0.00",
-     DateTimeCreated: dates.createDate || dates.originalDate || "",
-     DateTimeOriginal: dates.originalDate || dates.createDate || ""
+     DateTimeCreated: dates.createDate || dates.originalDate || currentDate,
+     DateTimeOriginal: dates.originalDate || dates.createDate || currentDate
    };
 
    return metadataObject;
