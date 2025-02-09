@@ -26,18 +26,14 @@ async function verifyTurnstileToken(token) {
 function formatDate(date) {
   if (!date) return null;
   try {
-    // Check if it's a timestamp
     if (typeof date === 'number') {
-      // Ensure the timestamp is valid
       if (date < 0 || !Number.isFinite(date)) {
         return null;
       }
-      // Check if the timestamp is in seconds (EXIF standard) rather than milliseconds
       const timestamp = date * (date < 10000000000 ? 1000 : 1);
       date = new Date(timestamp);
     }
     
-    // Validate the date object
     if (!(date instanceof Date) || isNaN(date.getTime())) {
       return null;
     }
@@ -58,7 +54,24 @@ async function extractMetadata(buffer, url) {
       }
     });
 
-    const metadata = await safeProbeImage(readableStream, buffer, url);
+    let metadata;
+    try {
+      metadata = await probeImageSize(readableStream);
+    } catch (streamError) {
+      console.error('Error using probe-image-size with stream:', streamError);
+      try {
+        metadata = await probeImageSize(buffer);
+      } catch (bufferError) {
+        console.error('Error using probe-image-size with buffer:', bufferError);
+        try {
+          metadata = await probeImageSize(url);
+        } catch (urlError) {
+          console.error('Error using probe-image-size with URL:', urlError);
+          throw new Error('Failed to probe image dimensions');
+        }
+      }
+    }
+
     const currentDate = formatDate(new Date());
     const fileName = path.basename(url);
 
@@ -114,18 +127,19 @@ async function extractMetadata(buffer, url) {
             Copyright: result.tags.Copyright || "",
             Make: result.tags.Make,
             Model: result.tags.Model,
-            Software: result.tags.Software,
+            Software: result.tags.Software
           };
 
-           const modifyDate = formatDate(result.tags.ModifyDate);
-  if (modifyDate) metadataObject.EXIF.ModifyDate = modifyDate;
+          // Handle dates safely
+          const modifyDate = formatDate(result.tags.ModifyDate);
+          if (modifyDate) metadataObject.EXIF.ModifyDate = modifyDate;
 
-  const createDate = formatDate(result.tags.CreateDate);
-  if (createDate) metadataObject.EXIF.CreateDate = createDate;
+          const createDate = formatDate(result.tags.CreateDate);
+          if (createDate) metadataObject.EXIF.CreateDate = createDate;
 
-  const originalDate = formatDate(result.tags.DateTimeOriginal);
-  if (originalDate) metadataObject.EXIF.DateTimeOriginal = originalDate;
-          
+          const originalDate = formatDate(result.tags.DateTimeOriginal);
+          if (originalDate) metadataObject.EXIF.DateTimeOriginal = originalDate;
+
           if (result.tags.GPSLatitude && result.tags.GPSLongitude) {
             metadataObject.EXIF.GPSLatitude = result.tags.GPSLatitude;
             metadataObject.EXIF.GPSLongitude = result.tags.GPSLongitude;
