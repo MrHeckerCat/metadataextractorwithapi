@@ -98,7 +98,7 @@ async function extractMetadata(buffer, url) {
         ApplicationRecordVersion: 4
       },
       XMP: {
-        XMPToolkit: "Image::ExifTool 12.72"
+        XMPToolkit: "Image::ExifTool 12.72",
         Headline: "",
         Instructions: "",
         CopyrightOwnerID: "",
