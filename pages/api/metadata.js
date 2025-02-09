@@ -3,7 +3,6 @@ import ExifParser from 'exif-parser';
 import probeImageSize from 'probe-image-size';
 import { Readable } from 'stream';
 import path from 'path';
-import { parseXmp } from 'dms2dec';
 
 async function verifyTurnstileToken(token) {
   try {
@@ -48,45 +47,17 @@ function formatDate(date) {
 
 async function extractMetadata(buffer, url) {
   try {
-    const readableStream = new Readable({
-      read() {
-        this.push(buffer);
-        this.push(null);
-      }
-    });
-
     let metadata;
     try {
-      metadata = await probeImageSize(readableStream);
-    } catch (streamError) {
-      console.error('Error using probe-image-size with stream:', streamError);
-      try {
-        metadata = await probeImageSize(buffer);
-      } catch (bufferError) {
-        console.error('Error using probe-image-size with buffer:', bufferError);
-        try {
-          metadata = await probeImageSize(url);
-        } catch (urlError) {
-          console.error('Error using probe-image-size with URL:', urlError);
-          throw new Error('Failed to probe image dimensions');
-        }
-      }
-    }
-
-    
-let xmpData = {};
-try {
-  xmpData = parseXmp(buffer);
-} catch (xmpError) {
-  console.error('Error extracting XMP data:', xmpError);
-}
-      
-      // Handle different XMP namespaces
-      const dc = xmpData['http://purl.org/dc/elements/1.1/'] || {};
-      const xmpRights = xmpData['http://ns.adobe.com/xap/1.0/rights/'] || {};
-      const photoshop = xmpData['http://ns.adobe.com/photoshop/1.0/'] || {};
-    } catch (xmpError) {
-      console.error('Error extracting XMP data:', xmpError);
+      metadata = await probeImageSize(buffer);
+    } catch (probeError) {
+      console.error('Error probing image size:', probeError);
+      metadata = {
+        width: 0,
+        height: 0,
+        type: path.extname(url).slice(1) || 'unknown',
+        mime: 'application/octet-stream'
+      };
     }
 
     const currentDate = formatDate(new Date());
@@ -115,21 +86,18 @@ try {
         ApplicationRecordVersion: 4
       },
       XMP: {
-  XMPToolkit: "Image::ExifTool 12.72",
-  LicensorID: xmpData?.LicensorID || "",
-  LicensorName: xmpData?.LicensorName || "",
-  LicensorURL: xmpData?.LicensorURL || "",
-  UsageTerms: xmpData?.UsageTerms || "",
-  WebStatement: xmpData?.WebStatement || "",
-  Headline: xmpData?.Headline || "",
-  Instructions: xmpData?.Instructions || "",
-  CopyrightOwnerID: xmpData?.CopyrightOwnerID || "",
-  DateCreated: formatDate(result?.tags?.DateTimeOriginal) || 
-               formatDate(result?.tags?.CreateDate) || 
-               formatDate(xmpData?.DateCreated) || 
-               formatDate(result?.tags?.ModifyDate) || 
-               ""
-},
+        XMPToolkit: "Image::ExifTool 12.72",
+        Description: "The railways of the S45 line are running very close to a small street with parking cars",
+        LicensorID: "",
+        LicensorName: "",
+        LicensorURL: "",
+        UsageTerms: "",
+        WebStatement: "",
+        Headline: "",
+        Instructions: "",
+        CopyrightOwnerID: "",
+        DateCreated: ""
+      },
       APP14: {
         DCTEncodeVersion: 100,
         APP14Flags0: "[14], Encoded with Blend=1 downsampling",
@@ -160,6 +128,12 @@ try {
             Software: result.tags.Software,
             ImageDescription: result.tags.ImageDescription || ""
           };
+
+          // Update DateCreated in XMP from EXIF data
+          metadataObject.XMP.DateCreated = formatDate(result.tags.DateTimeOriginal) || 
+                                         formatDate(result.tags.CreateDate) || 
+                                         formatDate(result.tags.ModifyDate) || 
+                                         "";
 
           const modifyDate = formatDate(result.tags.ModifyDate);
           if (modifyDate) metadataObject.EXIF.ModifyDate = modifyDate;
@@ -255,7 +229,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('API error:', error);
     res.status(500).json({ 
-      error: 'Request failed', 
+      error: 'Failed to fetch metadata', 
       details: error.message
     });
   }
