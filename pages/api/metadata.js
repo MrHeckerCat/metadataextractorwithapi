@@ -99,6 +99,17 @@ async function extractMetadata(buffer, url) {
       },
       XMP: {
         XMPToolkit: "Image::ExifTool 12.72"
+          Headline: "",
+  Instructions: "",
+  CopyrightOwnerID: "",
+  CopyrightOwnerName: "",
+  ImageCreatorID: "",
+  ImageCreatorName: "",
+  LicensorID: "",
+  LicensorName: "",
+  LicensorURL: "",
+  UsageTerms: "",
+  WebStatement: ""
       },
       APP14: {
         DCTEncodeVersion: 100,
@@ -159,11 +170,13 @@ async function extractMetadata(buffer, url) {
           if (result.tags.Artist) {
             metadataObject.IPTC["By-line"] = result.tags.Artist;
             metadataObject.XMP.Creator = result.tags.Artist;
+            metadataObject.XMP.ImageCreatorName = result.tags.Artist;
           }
 
           if (result.tags.Copyright) {
             metadataObject.IPTC.CopyrightNotice = result.tags.Copyright;
             metadataObject.XMP.Rights = result.tags.Copyright;
+            metadataObject.XMP.CopyrightOwnerName = result.tags.Copyright;
           }
 
           if (result.imageSize) {
