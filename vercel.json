@@ -11,5 +11,11 @@
       "path": "/api/cleanup",
       "schedule": "0 0 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "api/cleanup.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  }
 }
