@@ -2,20 +2,20 @@ import { del, list } from '@vercel/blob';
 
 export default async function cleanup(req, res) {
   try {
-    // Log request method and headers for debugging
-    console.log('Request method:', req.method);
-    console.log('Authorization header:', req.headers.authorization ? 'Present' : 'Missing');
+    console.log('Request received');
+    console.log('Request headers:', JSON.stringify(req.headers));
+    console.log('CRON_SECRET exists:', !!process.env.CRON_SECRET);
 
-    // Only allow POST requests from Vercel Cron
-    if (req.method !== 'POST') {
-      console.log('Method not allowed:', req.method);
-      return res.status(405).json({ error: 'Method not allowed' });
-    }
+    // Check for Vercel's internal cron header
+    const isVercelCron = req.headers['x-vercel-cron'] === 'true';
+    const hasValidAuth = req.headers.authorization === `Bearer ${process.env.CRON_SECRET}`;
 
-    // Verify the request is from Vercel Cron
-    const authHeader = req.headers.authorization;
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      console.log('Invalid authorization');
+    console.log('Is Vercel cron:', isVercelCron);
+    console.log('Has valid auth:', hasValidAuth);
+
+    // Accept either valid auth or Vercel's internal cron header
+    if (!isVercelCron && !hasValidAuth) {
+      console.log('Authentication failed');
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -24,7 +24,7 @@ export default async function cleanup(req, res) {
     const { blobs } = await list();
     console.log('Total blobs found:', blobs.length);
 
-    // Calculate the timestamp for 24 hours ago
+    // Calculate the timestamp for 12 hours ago
     const deleteBeforeDate = new Date();
     deleteBeforeDate.setHours(deleteBeforeDate.getHours() - 12);
     console.log('Delete before:', deleteBeforeDate);
