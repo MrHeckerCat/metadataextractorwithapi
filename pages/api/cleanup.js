@@ -26,7 +26,7 @@ export default async function cleanup(req, res) {
 
     // Calculate the timestamp for 12 hours ago
     const deleteBeforeDate = new Date();
-    deleteBeforeDate.setHours(deleteBeforeDate.getHours() - 1);
+    deleteBeforeDate.setHours(deleteBeforeDate.getHours() - 2);
     console.log('Delete before:', deleteBeforeDate);
 
     // Filter and delete old blobs
