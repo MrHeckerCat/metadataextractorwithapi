@@ -6,10 +6,5 @@
       "use": "@vercel/next"
     }
   ],
-  "crons": [
-    {
-      "path": "/api/cleanup",
-      "schedule": "0 */2 * * *"
-    }
   ]
 }
