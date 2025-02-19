@@ -5,6 +5,25 @@ import { writeFile, unlink } from 'fs/promises';
 import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
 
+async function verifyTurnstileToken(token) {
+  try {
+    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        secret: process.env.TURNSTILE_SECRET_KEY, // Make sure to set this in your environment variables
+        response: token,
+      }),
+    });
+    return await response.json();
+  } catch (error) {
+    console.error('Turnstile verification error:', error);
+    return { success: false, error: 'Failed to verify CAPTCHA' };
+  }
+}
+
 async function extractMetadata(buffer, url) {
   let tempFilePath = null;
   
@@ -155,6 +174,11 @@ async function extractMetadata(buffer, url) {
     }
   }
 }
+
+export {
+  extractMetadata,
+  verifyTurnstileToken
+};
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
