@@ -1,0 +1,31 @@
+.feedback-message {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-left: 4px solid #7c83fd;
+  border-radius: 4px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.feedback-message p {
+  margin: 5px 0;
+  color: #333;
+}
+
+.feedback-message a {
+  color: #7c83fd;
+  text-decoration: none;
+}
+
+.feedback-message a:hover {
+  text-decoration: underline;
+}
