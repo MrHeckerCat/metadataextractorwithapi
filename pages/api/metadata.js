@@ -1,9 +1,17 @@
 import { exiftool } from 'exiftool-vendored';
 import path from 'path';
-import { Readable } from 'stream';
 import { writeFile, unlink } from 'fs/promises';
 import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
+
+let exiftoolProcess = null;
+
+async function getExiftool() {
+  if (!exiftoolProcess) {
+    exiftoolProcess = exiftool;
+  }
+  return exiftoolProcess;
+}
 
 async function verifyTurnstileToken(token) {
   try {
@@ -13,13 +21,11 @@ async function verifyTurnstileToken(token) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        secret: process.env.TURNSTILE_SECRET_KEY, // Make sure to set this in your environment variables
+        secret: process.env.TURNSTILE_SECRET_KEY,
         response: token,
       }),
     });
-
-    const data = await response.json();
-    return data;
+    return await response.json();
   } catch (error) {
     console.error('Turnstile verification error:', error);
     return { success: false, error: 'Failed to verify CAPTCHA' };
@@ -28,19 +34,21 @@ async function verifyTurnstileToken(token) {
 
 async function extractMetadata(buffer, url) {
   let tempFilePath = null;
+  const et = await getExiftool();
   
   try {
-    // Create a temporary file to store the buffer
     const tempFileName = `temp-${uuidv4()}${path.extname(url)}`;
     tempFilePath = path.join(os.tmpdir(), tempFileName);
-    
-    // Write buffer to temporary file
     await writeFile(tempFilePath, buffer);
-    
-    // Extract metadata using exiftool
-    const metadata = await exiftool.read(tempFilePath);
-    
-    // Map the metadata to our required structure
+
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Metadata extraction timed out')), 50000);
+    });
+
+    const metadataPromise = et.read(tempFilePath);
+    const metadata = await Promise.race([metadataPromise, timeoutPromise]);
+
+    // Create full metadata object with all fields
     const metadataObject = {
       File: {
         Url: url,
@@ -71,6 +79,7 @@ async function extractMetadata(buffer, url) {
         Software: metadata.Software || '',
         ModifyDate: metadata.ModifyDate || '',
         Artist: metadata.Artist || '',
+        Copyright: metadata.Copyright || '',
         ExposureTime: metadata.ExposureTime || '',
         FNumber: metadata.FNumber || 0,
         ExposureProgram: metadata.ExposureProgram || '',
@@ -120,12 +129,154 @@ async function extractMetadata(buffer, url) {
         ModifyDate: metadata.XMP?.ModifyDate || '',
         CreateDate: metadata.XMP?.CreateDate || '',
         CreatorTool: metadata.XMP?.CreatorTool || '',
-        // ... map all other XMP fields from metadata.XMP
+        Rating: metadata.XMP?.Rating || 0,
+        MetadataDate: metadata.XMP?.MetadataDate || '',
+        Format: metadata.XMP?.Format || '',
+        Latitude: metadata.XMP?.Latitude || '',
+        Longitude: metadata.XMP?.Longitude || '',
+        AbsoluteAltitude: metadata.XMP?.AbsoluteAltitude || '',
+        RelativeAltitude: metadata.XMP?.RelativeAltitude || '',
+        GimbalRollDegree: metadata.XMP?.GimbalRollDegree || '',
+        GimbalYawDegree: metadata.XMP?.GimbalYawDegree || 0,
+        GimbalPitchDegree: metadata.XMP?.GimbalPitchDegree || '',
+        FlightRollDegree: metadata.XMP?.FlightRollDegree || 0,
+        FlightYawDegree: metadata.XMP?.FlightYawDegree || 0,
+        FlightPitchDegree: metadata.XMP?.FlightPitchDegree || '',
+        CamReverse: metadata.XMP?.CamReverse || 0,
+        GimbalReverse: metadata.XMP?.GimbalReverse || 0,
+        SelfData: metadata.XMP?.SelfData || '',
+        SerialNumber: metadata.XMP?.SerialNumber || 0,
+        Lens: metadata.XMP?.Lens || '',
+        DistortionCorrectionAlreadyApplied: metadata.XMP?.DistortionCorrectionAlreadyApplied || false,
+        LateralChromaticAberrationCorrectionAlreadyApplied: metadata.XMP?.LateralChromaticAberrationCorrectionAlreadyApplied || false,
+        DateCreated: metadata.XMP?.DateCreated || '',
+        DocumentID: metadata.XMP?.DocumentID || '',
+        OriginalDocumentID: metadata.XMP?.OriginalDocumentID || '',
+        InstanceID: metadata.XMP?.InstanceID || '',
+        Marked: metadata.XMP?.Marked || false,
+        RawFileName: metadata.XMP?.RawFileName || '',
+        Version: metadata.XMP?.Version || 0,
+        ProcessVersion: metadata.XMP?.ProcessVersion || 0,
+        WhiteBalance: metadata.XMP?.WhiteBalance || '',
+        ColorTemperature: metadata.XMP?.ColorTemperature || 0,
+        Tint: metadata.XMP?.Tint || 0,
+        Saturation: metadata.XMP?.Saturation || '',
+        Sharpness: metadata.XMP?.Sharpness || 0,
+        LuminanceSmoothing: metadata.XMP?.LuminanceSmoothing || 0,
+        ColorNoiseReduction: metadata.XMP?.ColorNoiseReduction || 0,
+        VignetteAmount: metadata.XMP?.VignetteAmount || 0,
+        ShadowTint: metadata.XMP?.ShadowTint || 0,
+        RedHue: metadata.XMP?.RedHue || 0,
+        RedSaturation: metadata.XMP?.RedSaturation || 0,
+        GreenHue: metadata.XMP?.GreenHue || 0,
+        GreenSaturation: metadata.XMP?.GreenSaturation || 0,
+        BlueHue: metadata.XMP?.BlueHue || 0,
+        BlueSaturation: metadata.XMP?.BlueSaturation || 0,
+        Vibrance: metadata.XMP?.Vibrance || '',
+        HueAdjustmentRed: metadata.XMP?.HueAdjustmentRed || 0,
+        HueAdjustmentOrange: metadata.XMP?.HueAdjustmentOrange || 0,
+        HueAdjustmentYellow: metadata.XMP?.HueAdjustmentYellow || 0,
+        HueAdjustmentGreen: metadata.XMP?.HueAdjustmentGreen || 0,
+        HueAdjustmentAqua: metadata.XMP?.HueAdjustmentAqua || 0,
+        HueAdjustmentBlue: metadata.XMP?.HueAdjustmentBlue || 0,
+        HueAdjustmentPurple: metadata.XMP?.HueAdjustmentPurple || 0,
+        HueAdjustmentMagenta: metadata.XMP?.HueAdjustmentMagenta || 0,
+        SaturationAdjustmentRed: metadata.XMP?.SaturationAdjustmentRed || 0,
+        SaturationAdjustmentOrange: metadata.XMP?.SaturationAdjustmentOrange || 0,
+        SaturationAdjustmentYellow: metadata.XMP?.SaturationAdjustmentYellow || 0,
+        SaturationAdjustmentGreen: metadata.XMP?.SaturationAdjustmentGreen || 0,
+        SaturationAdjustmentAqua: metadata.XMP?.SaturationAdjustmentAqua || 0,
+        SaturationAdjustmentBlue: metadata.XMP?.SaturationAdjustmentBlue || 0,
+        SaturationAdjustmentPurple: metadata.XMP?.SaturationAdjustmentPurple || 0,
+        SaturationAdjustmentMagenta: metadata.XMP?.SaturationAdjustmentMagenta || 0,
+        LuminanceAdjustmentRed: metadata.XMP?.LuminanceAdjustmentRed || 0,
+        LuminanceAdjustmentOrange: metadata.XMP?.LuminanceAdjustmentOrange || 0,
+        LuminanceAdjustmentYellow: metadata.XMP?.LuminanceAdjustmentYellow || 0,
+        LuminanceAdjustmentGreen: metadata.XMP?.LuminanceAdjustmentGreen || 0,
+        LuminanceAdjustmentAqua: metadata.XMP?.LuminanceAdjustmentAqua || 0,
+        LuminanceAdjustmentBlue: metadata.XMP?.LuminanceAdjustmentBlue || 0,
+        LuminanceAdjustmentPurple: metadata.XMP?.LuminanceAdjustmentPurple || 0,
+        LuminanceAdjustmentMagenta: metadata.XMP?.LuminanceAdjustmentMagenta || 0,
+        SplitToningShadowHue: metadata.XMP?.SplitToningShadowHue || 0,
+        SplitToningShadowSaturation: metadata.XMP?.SplitToningShadowSaturation || 0,
+        SplitToningHighlightHue: metadata.XMP?.SplitToningHighlightHue || 0,
+        SplitToningHighlightSaturation: metadata.XMP?.SplitToningHighlightSaturation || 0,
+        SplitToningBalance: metadata.XMP?.SplitToningBalance || 0,
+        ParametricShadows: metadata.XMP?.ParametricShadows || 0,
+        ParametricDarks: metadata.XMP?.ParametricDarks || 0,
+        ParametricLights: metadata.XMP?.ParametricLights || 0,
+        ParametricHighlights: metadata.XMP?.ParametricHighlights || 0,
+        ParametricShadowSplit: metadata.XMP?.ParametricShadowSplit || 0,
+        ParametricMidtoneSplit: metadata.XMP?.ParametricMidtoneSplit || 0,
+        ParametricHighlightSplit: metadata.XMP?.ParametricHighlightSplit || 0,
+        SharpenRadius: metadata.XMP?.SharpenRadius || '',
+        SharpenDetail: metadata.XMP?.SharpenDetail || 0,
+        SharpenEdgeMasking: metadata.XMP?.SharpenEdgeMasking || 0,
+        PostCropVignetteAmount: metadata.XMP?.PostCropVignetteAmount || 0,
+        GrainAmount: metadata.XMP?.GrainAmount || 0,
+        LuminanceNoiseReductionDetail: metadata.XMP?.LuminanceNoiseReductionDetail || 0,
+        ColorNoiseReductionDetail: metadata.XMP?.ColorNoiseReductionDetail || 0,
+        LuminanceNoiseReductionContrast: metadata.XMP?.LuminanceNoiseReductionContrast || 0,
+        ColorNoiseReductionSmoothness: metadata.XMP?.ColorNoiseReductionSmoothness || 0,
+        LensProfileEnable: metadata.XMP?.LensProfileEnable || 0,
+        LensManualDistortionAmount: metadata.XMP?.LensManualDistortionAmount || 0,
+        PerspectiveVertical: metadata.XMP?.PerspectiveVertical || 0,
+        PerspectiveHorizontal: metadata.XMP?.PerspectiveHorizontal || 0,
+        PerspectiveRotate: metadata.XMP?.PerspectiveRotate || 0,
+        PerspectiveScale: metadata.XMP?.PerspectiveScale || 0,
+        PerspectiveAspect: metadata.XMP?.PerspectiveAspect || 0,
+        PerspectiveUpright: metadata.XMP?.PerspectiveUpright || 0,
+        PerspectiveX: metadata.XMP?.PerspectiveX || 0,
+        PerspectiveY: metadata.XMP?.PerspectiveY || 0,
+        AutoLateralCA: metadata.XMP?.AutoLateralCA || 0,
+        Exposure2012: metadata.XMP?.Exposure2012 || 0,
+        Contrast2012: metadata.XMP?.Contrast2012 || '',
+        Highlights2012: metadata.XMP?.Highlights2012 || 0,
+        Shadows2012: metadata.XMP?.Shadows2012 || '',
+        Whites2012: metadata.XMP?.Whites2012 || '',
+        Blacks2012: metadata.XMP?.Blacks2012 || 0,
+        Clarity2012: metadata.XMP?.Clarity2012 || '',
+        DefringePurpleAmount: metadata.XMP?.DefringePurpleAmount || 0,
+        DefringePurpleHueLo: metadata.XMP?.DefringePurpleHueLo || 0,
+        DefringePurpleHueHi: metadata.XMP?.DefringePurpleHueHi || 0,
+        DefringeGreenAmount: metadata.XMP?.DefringeGreenAmount || 0,
+        DefringeGreenHueLo: metadata.XMP?.DefringeGreenHueLo || 0,
+        DefringeGreenHueHi: metadata.XMP?.DefringeGreenHueHi || 0,
+        Dehaze: metadata.XMP?.Dehaze || '',
+        ToneCurveName: metadata.XMP?.ToneCurveName || '',
+        ToneCurveName2012: metadata.XMP?.ToneCurveName2012 || '',
+        CameraProfile: metadata.XMP?.CameraProfile || '',
+        CameraProfileDigest: metadata.XMP?.CameraProfileDigest || '',
+        LensProfileSetup: metadata.XMP?.LensProfileSetup || '',
+        UprightVersion: metadata.XMP?.UprightVersion || 0,
+        UprightCenterMode: metadata.XMP?.UprightCenterMode || 0,
+        UprightCenterNormX: metadata.XMP?.UprightCenterNormX || 0,
+        UprightCenterNormY: metadata.XMP?.UprightCenterNormY || 0,
+        UprightFocalMode: metadata.XMP?.UprightFocalMode || 0,
+        UprightFocalLength35mm: metadata.XMP?.UprightFocalLength35mm || 0,
+        UprightPreview: metadata.XMP?.UprightPreview || false,
+        UprightTransformCount: metadata.XMP?.UprightTransformCount || 0,
+        UprightFourSegmentsCount: metadata.XMP?.UprightFourSegmentsCount || 0,
+        HasSettings: metadata.XMP?.HasSettings || false,
+        HasCrop: metadata.XMP?.HasCrop || false,
+        AlreadyApplied: metadata.XMP?.AlreadyApplied || false,
+        Creator: metadata.XMP?.Creator || '',
+        CreatorWorkEmail: metadata.XMP?.CreatorWorkEmail || '',
+        CreatorWorkURL: metadata.XMP?.CreatorWorkURL || ''
       },
       Photoshop: {
         XResolution: metadata.Photoshop?.XResolution || 0,
         DisplayedUnitsX: metadata.Photoshop?.DisplayedUnitsX || '',
-        // ... map all other Photoshop fields from metadata.Photoshop
+        YResolution: metadata.Photoshop?.YResolution || 0,
+        DisplayedUnitsY: metadata.Photoshop?.DisplayedUnitsY || '',
+        PhotoshopQuality: metadata.Photoshop?.PhotoshopQuality || 0,
+        PhotoshopFormat: metadata.Photoshop?.PhotoshopFormat || '',
+        ProgressiveScans: metadata.Photoshop?.ProgressiveScans || '',
+        CopyrightFlag: metadata.Photoshop?.CopyrightFlag || false,
+        GlobalAngle: metadata.Photoshop?.GlobalAngle || 0,
+        GlobalAltitude: metadata.Photoshop?.GlobalAltitude || 0,
+        PrintScale: metadata.Photoshop?.PrintScale || 0,
+        PixelAspectRatio: metadata.Photoshop?.PixelAspectRatio || 0
       },
       IPTC: {
         CodedCharacterSet: metadata.IPTC?.CodedCharacterSet || '',
@@ -137,7 +288,23 @@ async function extractMetadata(buffer, url) {
       ICC_Profile: {
         ProfileCMMType: metadata.ICC_Profile?.ProfileCMMType || '',
         ProfileVersion: metadata.ICC_Profile?.ProfileVersion || '',
-        // ... map all other ICC_Profile fields from metadata.ICC_Profile
+        ProfileClass: metadata.ICC_Profile?.ProfileClass || '',
+        ColorSpaceData: metadata.ICC_Profile?.ColorSpaceData || '',
+        ProfileConnectionSpace: metadata.ICC_Profile?.ProfileConnectionSpace || '',
+        ProfileDateTime: metadata.ICC_Profile?.ProfileDateTime || '',
+        ProfileFileSignature: metadata.ICC_Profile?.ProfileFileSignature || '',
+        PrimaryPlatform: metadata.ICC_Profile?.PrimaryPlatform || '',
+        CMMFlags: metadata.ICC_Profile?.CMMFlags || '',
+        DeviceManufacturer: metadata.ICC_Profile?.DeviceManufacturer || '',
+        DeviceModel: metadata.ICC_Profile?.DeviceModel || '',
+        DeviceAttributes: metadata.ICC_Profile?.DeviceAttributes || '',
+        RenderingIntent: metadata.ICC_Profile?.RenderingIntent || '',
+        ConnectionSpaceIlluminant: metadata.ICC_Profile?.ConnectionSpaceIlluminant || '',
+        ProfileCreator: metadata.ICC_Profile?.ProfileCreator || '',
+        ProfileID: metadata.ICC_Profile?.ProfileID || 0,
+        ProfileDescription: metadata.ICC_Profile?.ProfileDescription || '',
+        MediaWhitePoint: metadata.ICC_Profile?.MediaWhitePoint || '',
+        MediaBlackPoint: metadata.ICC_Profile?.MediaBlackPoint || ''
       },
       APP14: {
         DCTEncodeVersion: metadata.APP14?.DCTEncodeVersion || 0,
@@ -166,7 +333,6 @@ async function extractMetadata(buffer, url) {
     console.error('Error in extractMetadata:', error);
     throw new Error(`Error processing image: ${error.message}`);
   } finally {
-    // Clean up temporary file
     if (tempFilePath) {
       try {
         await unlink(tempFilePath);
@@ -176,10 +342,13 @@ async function extractMetadata(buffer, url) {
     }
   }
 }
-
-export {
-  extractMetadata,
-  verifyTurnstileToken
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+    responseLimit: false
+  },
 };
 
 export default async function handler(req, res) {
@@ -188,45 +357,117 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { url } = req.body;
+    const { url, turnstileToken } = req.body;
 
     if (!url) {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    const imageResponse = await fetch(url);
-    
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
+    if (!turnstileToken) {
+      return res.status(400).json({ error: 'CAPTCHA token is required' });
     }
 
-    // Check Content-Type
-    const contentType = imageResponse.headers.get('content-type');
-    if (!contentType || !contentType.startsWith('image/')) {
-      throw new Error(`Invalid content type: ${contentType}`);
-    }
-
-    // Get the response as arrayBuffer
-    const imageBuffer = await imageResponse.arrayBuffer();
-    const buffer = Buffer.from(imageBuffer);
-
-    try {
-      const metadata = await extractMetadata(buffer, url);
-      console.log('Extracted metadata:', metadata); // Debug log
-      return res.status(200).json(metadata);
-    } catch (metadataError) {
-      console.error('Metadata extraction error:', metadataError);
-      return res.status(500).json({
-        error: 'Failed to extract metadata',
-        details: metadataError.message
+    // Verify CAPTCHA
+    const verification = await verifyTurnstileToken(turnstileToken);
+    if (!verification.success) {
+      return res.status(400).json({ 
+        error: 'Invalid CAPTCHA', 
+        details: verification.error || 'CAPTCHA verification failed'
       });
     }
 
+    // Set up fetch with timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    try {
+      // Fetch the image
+      const imageResponse = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      });
+
+      if (!imageResponse.ok) {
+        throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
+      }
+
+      // Verify content type
+      const contentType = imageResponse.headers.get('content-type');
+      if (!contentType || !contentType.startsWith('image/')) {
+        throw new Error(`Invalid content type: ${contentType}`);
+      }
+
+      // Get image data
+      const imageBuffer = await imageResponse.arrayBuffer();
+      const buffer = Buffer.from(imageBuffer);
+
+      // Check file size
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (buffer.length > maxSize) {
+        throw new Error('Image file size exceeds 10MB limit');
+      }
+
+      // Extract metadata
+      const metadata = await extractMetadata(buffer, url);
+
+      // Clean up sensitive data if present
+      if (metadata.EXIF) {
+        delete metadata.EXIF.SerialNumber;
+        delete metadata.EXIF.InternalSerialNumber;
+      }
+
+      if (metadata.XMP) {
+        delete metadata.XMP.SerialNumber;
+        delete metadata.XMP.CreatorWorkEmail;
+        delete metadata.XMP.CreatorWorkURL;
+      }
+
+      // Send response
+      return res.status(200).json(metadata);
+
+    } catch (fetchError) {
+      if (fetchError.name === 'AbortError') {
+        throw new Error('Image fetch timed out');
+      }
+      throw fetchError;
+    } finally {
+      clearTimeout(timeout);
+    }
+
   } catch (error) {
-    console.error('Request error:', error);
-    return res.status(500).json({
+    console.error('API error:', error);
+    
+    // Determine appropriate error response
+    const errorResponse = {
       error: 'Request failed',
       details: error.message
-    });
+    };
+
+    const statusCode = 
+      error.message.includes('Invalid content type') ? 415 :
+      error.message.includes('timed out') ? 408 :
+      error.message.includes('size exceeds') ? 413 :
+      500;
+
+    return res.status(statusCode).json(errorResponse);
+
+  } finally {
+    // Ensure exiftool process is cleaned up
+    try {
+      if (exiftoolProcess) {
+        await exiftoolProcess.end();
+        exiftoolProcess = null;
+      }
+    } catch (cleanupError) {
+      console.error('Error cleaning up exiftool:', cleanupError);
+    }
   }
 }
+
+// Export necessary functions for testing
+export {
+  extractMetadata,
+  verifyTurnstileToken
+};
