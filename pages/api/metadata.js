@@ -187,42 +187,46 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { url, turnstileToken } = req.body;
-
-  if (!url) {
-    return res.status(400).json({ error: 'URL is required' });
-  }
-  if (!turnstileToken) {
-    return res.status(400).json({ error: 'CAPTCHA token is required' });
-  }
-
   try {
-    const verification = await verifyTurnstileToken(turnstileToken);
-    if (!verification.success) {
-      return res.status(400).json({ 
-        error: 'Invalid CAPTCHA', 
-        details: verification.error || 'CAPTCHA verification failed'
-      });
+    const { url } = req.body;
+
+    if (!url) {
+      return res.status(400).json({ error: 'URL is required' });
     }
 
     const imageResponse = await fetch(url);
+    
     if (!imageResponse.ok) {
-      throw new Error('Failed to fetch image');
+      throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
     }
 
+    // Check Content-Type
+    const contentType = imageResponse.headers.get('content-type');
+    if (!contentType || !contentType.startsWith('image/')) {
+      throw new Error(`Invalid content type: ${contentType}`);
+    }
+
+    // Get the response as arrayBuffer
     const imageBuffer = await imageResponse.arrayBuffer();
     const buffer = Buffer.from(imageBuffer);
-    const metadata = await extractMetadata(buffer, url);
 
-    res.status(200).json(metadata);
+    try {
+      const metadata = await extractMetadata(buffer, url);
+      console.log('Extracted metadata:', metadata); // Debug log
+      return res.status(200).json(metadata);
+    } catch (metadataError) {
+      console.error('Metadata extraction error:', metadataError);
+      return res.status(500).json({
+        error: 'Failed to extract metadata',
+        details: metadataError.message
+      });
+    }
+
   } catch (error) {
-    console.error('API error:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch metadata', 
+    console.error('Request error:', error);
+    return res.status(500).json({
+      error: 'Request failed',
       details: error.message
     });
-  } finally {
-    // Ensure exiftool process is closed
-    await exiftool.end();
   }
 }
