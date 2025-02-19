@@ -18,82 +18,73 @@ async function extractMetadata(buffer, url) {
   const et = await getExiftool();
   
   try {
-    // Create temporary file with unique name
     const tempFileName = `temp-${uuidv4()}${path.extname(url)}`;
     tempFilePath = path.join(os.tmpdir(), tempFileName);
     
-    // Write buffer to temp file
     await writeFile(tempFilePath, buffer);
 
-    // Extract metadata with shorter timeout
+    // Reduce timeout to 15 seconds
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Metadata extraction timed out')), 25000);
+      setTimeout(() => reject(new Error('Metadata extraction timed out')), 15000);
     });
 
+    // Extract metadata
     const metadataPromise = et.read(tempFilePath);
     const metadata = await Promise.race([metadataPromise, timeoutPromise]);
 
-    // Prioritize essential metadata first
-    const essentialMetadata = {
+    return {
       File: {
         Url: url,
         FileName: path.basename(url),
-        FileSize: metadata.FileSize || 0,
-        FileType: metadata.FileType || '',
-        MIMEType: metadata.MIMEType || '',
+        FileSize: metadata.FileSize || buffer.length,
+        FileModifyDate: metadata.FileModifyDate || '',
+        FileAccessDate: metadata.FileAccessDate || '',
+        FileInodeChangeDate: metadata.FileInodeChangeDate || '',
+        FileType: metadata.FileType || path.extname(url).slice(1).toUpperCase(),
+        FileTypeExtension: metadata.FileTypeExtension || path.extname(url).slice(1).toLowerCase(),
+        MIMEType: metadata.MIMEType || `image/${path.extname(url).slice(1).toLowerCase()}`,
         ImageWidth: metadata.ImageWidth || 0,
-        ImageHeight: metadata.ImageHeight || 0
+        ImageHeight: metadata.ImageHeight || 0,
+        EncodingProcess: metadata.EncodingProcess || '',
+        BitsPerSample: metadata.BitsPerSample || 0,
+        ColorComponents: metadata.ColorComponents || 0,
+        YCbCrSubSampling: metadata.YCbCrSubSampling || ''
       },
       EXIF: {
         Make: metadata.Make || '',
         Model: metadata.Model || '',
+        Software: metadata.Software || '',
+        ModifyDate: metadata.ModifyDate || '',
         DateTimeOriginal: metadata.DateTimeOriginal || '',
         CreateDate: metadata.CreateDate || '',
         ExposureTime: metadata.ExposureTime || '',
         FNumber: metadata.FNumber || 0,
         ISO: metadata.ISO || 0,
-        FocalLength: metadata.FocalLength || ''
+        FocalLength: metadata.FocalLength || '',
+        GPSLatitude: metadata.GPSLatitude || '',
+        GPSLongitude: metadata.GPSLongitude || ''
       },
       Composite: {
         ImageSize: `${metadata.ImageWidth || 0}x${metadata.ImageHeight || 0}`,
-        Megapixels: ((metadata.ImageWidth || 0) * (metadata.ImageHeight || 0) / 1000000).toFixed(2)
+        Megapixels: ((metadata.ImageWidth || 0) * (metadata.ImageHeight || 0) / 1000000).toFixed(2),
+        GPSPosition: metadata.GPSPosition || ''
       }
     };
 
-    // Try to get additional metadata if time permits
-    try {
-      const additionalMetadata = {
-        XMP: metadata.XMP || {},
-        IPTC: metadata.IPTC || {},
-        ICC_Profile: metadata.ICC_Profile || {},
-        APP14: metadata.APP14 || {}
-      };
-
-      return {
-        ...essentialMetadata,
-        ...additionalMetadata
-      };
-    } catch (additionalError) {
-      console.warn('Could not extract additional metadata:', additionalError);
-      return essentialMetadata;
-    }
-
   } catch (error) {
-    if (error.message.includes('timed out')) {
-      // If timeout occurred, try to return basic file info
-      const basicInfo = {
-        File: {
-          Url: url,
-          FileName: path.basename(url),
-          FileSize: buffer.length,
-          FileType: path.extname(url).slice(1).toUpperCase() || 'UNKNOWN',
-          MIMEType: 'image/' + (path.extname(url).slice(1).toLowerCase() || 'unknown')
-        },
-        error: 'Partial metadata extracted due to timeout'
-      };
-      return basicInfo;
-    }
-    throw error;
+    console.error('Metadata extraction error:', error);
+    // Return basic file info on error
+    return {
+      File: {
+        Url: url,
+        FileName: path.basename(url),
+        FileSize: buffer.length,
+        FileType: path.extname(url).slice(1).toUpperCase() || 'UNKNOWN',
+        MIMEType: 'image/' + (path.extname(url).slice(1).toLowerCase() || 'unknown'),
+        ImageWidth: 0,
+        ImageHeight: 0
+      }
+    };
   } finally {
     if (tempFilePath) {
       try {
@@ -105,37 +96,24 @@ async function extractMetadata(buffer, url) {
   }
 }
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-    responseLimit: false
-  },
-};
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { url, turnstileToken } = req.body;
+    const { url } = req.body;
 
     if (!url) {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    // Set up fetch with timeout
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000); // Reduced timeout
+    const timeout = setTimeout(() => controller.abort(), 10000);
 
     try {
       const imageResponse = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
+        signal: controller.signal
       });
 
       if (!imageResponse.ok) {
@@ -159,15 +137,22 @@ export default async function handler(req, res) {
       details: error.message
     });
   } finally {
-    try {
-      if (exiftoolProcess) {
+    if (exiftoolProcess) {
+      try {
         await exiftoolProcess.end();
         exiftoolProcess = null;
+      } catch (error) {
+        console.error('Error cleaning up exiftool:', error);
       }
-    } catch (cleanupError) {
-      console.error('Error cleaning up exiftool:', cleanupError);
     }
   }
 }
 
-export { extractMetadata };
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+    responseLimit: false
+  },
+};
