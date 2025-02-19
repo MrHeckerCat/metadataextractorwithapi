@@ -17,7 +17,9 @@ async function verifyTurnstileToken(token) {
         response: token,
       }),
     });
-    return await response.json();
+
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error('Turnstile verification error:', error);
     return { success: false, error: 'Failed to verify CAPTCHA' };
