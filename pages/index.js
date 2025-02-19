@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import styles from '../styles/Home.module.css';
+import feedbackStyles from '../styles/FeedbackMessage.module.css';
+
+const FeedbackMessage = () => {
+  return (
+    <div className={feedbackStyles.feedbackMessage}>
+      <p>Was this metadata extraction helpful? We'd love to hear your feedback!</p>
+      <p>Send us your thoughts at <a href="mailto:info@imagedataextract.com">info@imagedataextract.com</a></p>
+    </div>
+  );
+};
 
 export default function Home() {
   const [metadata, setMetadata] = useState(null);
@@ -9,14 +19,13 @@ export default function Home() {
   const [openFaq, setOpenFaq] = useState(null);
   const [copySuccess, setCopySuccess] = useState('');
   const [turnstileToken, setTurnstileToken] = useState(null);
+  const [showFeedback, setShowFeedback] = useState(false);
   
   useEffect(() => {
-    // Define the callback function in the window object
     window.onTurnstileSuccess = (token) => {
       setTurnstileToken(token);
     };
 
-    // Load Turnstile script
     const script = document.createElement('script');
     script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
     script.async = true;
@@ -36,6 +45,7 @@ export default function Home() {
     setLoading(true);
     setError(null);
     setMetadata(null);
+    setShowFeedback(false);
 
     if (!turnstileToken) {
       setError('Please complete the CAPTCHA verification');
@@ -92,8 +102,8 @@ export default function Home() {
 
       const metadataData = await metadataResponse.json();
       setMetadata(metadataData);
+      setShowFeedback(true);
 
-      // Reset Turnstile after successful submission
       if (window.turnstile) {
         window.turnstile.reset();
       }
@@ -102,6 +112,7 @@ export default function Home() {
     } catch (error) {
       console.error('Error:', error);
       setError(error.message || 'An unexpected error occurred');
+      setShowFeedback(false);
     } finally {
       setLoading(false);
     }
@@ -161,7 +172,6 @@ export default function Home() {
           <p className={styles.orText}>OR</p>
           <input type="file" name="file" className={styles.input} />
           
-          {/* Turnstile CAPTCHA Widget */}
           <div
             id="turnstile-widget"
             className="cf-turnstile"
@@ -177,6 +187,7 @@ export default function Home() {
 
         {loading && <p>Loading...</p>}
         {error && <p className={styles.error}>{error}</p>}
+        
         {metadata && (
           <div className={styles.metadata}>
             <h2>Metadata:</h2>
@@ -184,6 +195,7 @@ export default function Home() {
             <button onClick={copyMetadata} className={styles.copyButton}>
               {copySuccess || 'Copy Metadata'}
             </button>
+            {showFeedback && <FeedbackMessage />}
           </div>
         )}
 
