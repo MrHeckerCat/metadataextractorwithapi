@@ -27,19 +27,11 @@ async function extractMetadata(buffer, url) {
 
     // Extract metadata with shorter timeout
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Metadata extraction timed out')), 25000); // Reduced timeout
+      setTimeout(() => reject(new Error('Metadata extraction timed out')), 25000);
     });
 
-    // Use faster extraction options
-    const metadataPromise = et.readMetadata(tempFilePath, {
-      'fast': true,            // Use fast extraction mode
-      'fast2': true,           // Additional speed optimization
-      'n': true,               // Extract numerical values only
-      'ignoreMissingTags': true // Don't spend time on missing tags
-    });
-
-    const rawMetadata = await Promise.race([metadataPromise, timeoutPromise]);
-    const metadata = rawMetadata[0]; // Extract first result
+    const metadataPromise = et.read(tempFilePath);
+    const metadata = await Promise.race([metadataPromise, timeoutPromise]);
 
     // Prioritize essential metadata first
     const essentialMetadata = {
