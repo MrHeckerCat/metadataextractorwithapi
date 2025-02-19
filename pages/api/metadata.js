@@ -398,24 +398,32 @@ export default async function handler(req, res) {
       setTimeout(() => reject(new Error('Request timed out')), 180000); // 3 minutes total timeout
     });
 
-    const processRequest = async () => {
-      // Verify CAPTCHA and process image as before...
-      const verification = await verifyTurnstileToken(turnstileToken);
-      if (!verification.success) {
-        throw new Error('Invalid CAPTCHA');
-      }
+    // In the API handler section, modify the processRequest function:
 
-      const imageResponse = await fetch(url, {
-        timeout: 30000, // 30 second timeout for fetch
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-      });
+const processRequest = async () => {
+  // Verify CAPTCHA and process image as before...
+  const verification = await verifyTurnstileToken(turnstileToken);
+  if (!verification.success) {
+    throw new Error('Invalid CAPTCHA');
+  }
 
-      // Process image and extract metadata
-      const buffer = await imageResponse.buffer();
-      return await extractMetadata(buffer, url);
-    };
+  const imageResponse = await fetch(url, {
+    timeout: 30000, // 30 second timeout for fetch
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+  });
+
+  if (!imageResponse.ok) {
+    throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
+  }
+
+  // Convert arrayBuffer to Buffer
+  const arrayBuffer = await imageResponse.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  
+  return await extractMetadata(buffer, url);
+};
 
     // Race between request processing and timeout
     const metadata = await Promise.race([processRequest(), requestTimeout]);
