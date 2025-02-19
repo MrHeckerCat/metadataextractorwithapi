@@ -20,7 +20,6 @@
     "node-iptc": "^1.0.5",
     "jpeg-js": "^0.4.3",
     "icc": "^2.0.0",
-    "photoshop-metadata": "^1.0.0",
     "exifreader": "^4.21.1"
   },
   "devDependencies": {
