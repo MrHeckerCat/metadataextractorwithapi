@@ -156,16 +156,6 @@ async function extractMetadata(buffer, url) {
   }
 }
 
-// Update package.json
-/*
-{
-  "dependencies": {
-    "exiftool-vendored": "^16.3.0",
-    "uuid": "^8.3.2"
-  }
-}
-*/
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
