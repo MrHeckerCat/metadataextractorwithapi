@@ -11,11 +11,5 @@
       "path": "/api/cleanup",
       "schedule": "0 10 * * *"
     }
-  ],
-  "functions": {
-    "pages/api/metadata.js": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
-  }
+  ]
 }
