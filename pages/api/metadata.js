@@ -44,12 +44,21 @@ async function extractMetadata(buffer, url) {
   try {
     console.log('Creating temporary file...');
     const tempFileName = `temp-${uuidv4()}${path.extname(url)}`;
-    tempFilePath = path.join(os.tmpdir(), tempFileName);
+    tempFilePath = path.join('/tmp', tempFileName); // Use /tmp directly on Vercel
     await writeFile(tempFilePath, buffer);
     console.log('Temporary file created at:', tempFilePath);
 
+    // Set a timeout for the exiftool operation
+    const exifToolTimeout = 30000; // 30 seconds
+    const metadataPromise = et.read(tempFilePath);
+
     console.log('Starting metadata extraction...');
-    const metadata = await et.read(tempFilePath);
+    const metadata = await Promise.race([
+      metadataPromise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('ExifTool operation timed out')), exifToolTimeout)
+      )
+    ]);
     console.log('Metadata extraction completed');
 
     // Helper function to get value with N/A default
@@ -515,8 +524,9 @@ const handler = async (req, res) => {
       return res.status(400).json({ error: 'URL is required' });
     }
 
+    // Reduce timeout to 50 seconds to ensure we complete before Vercel's 60s limit
     const requestTimeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timed out')), 180000);
+      setTimeout(() => reject(new Error('Request timed out')), 50000);
     });
 
     const processRequest = async () => {
@@ -526,7 +536,7 @@ const handler = async (req, res) => {
       }
 
       const imageResponse = await fetch(url, {
-        timeout: 30000,
+        timeout: 10000, // Reduce fetch timeout to 10 seconds
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
@@ -584,9 +594,10 @@ module.exports = {
   config: {
     api: {
       bodyParser: {
-        sizeLimit: '10mb',
+        sizeLimit: '4mb',
       },
-      responseLimit: false
+      responseLimit: false,
+      maxDuration: 60
     }
   }
 };
