@@ -1,15 +1,12 @@
-const { exiftool } = require('exiftool-vendored');
 const path = require('path');
+const ExifReader = require('exifreader');
+const XMP = require('xmp-js');
 const { v4: uuidv4 } = require('uuid');
 const { put, del } = require('@vercel/blob');
-const ExifReader = require('exifreader');
 const probe = require('probe-image-size');
 const iptc = require('node-iptc');
 const os = require('os');
 const { writeFile, unlink } = require('fs/promises');
-
-// Initialize ExifTool with a single instance
-const exiftoolProcess = exiftool;
 
 async function verifyTurnstileToken(token) {
   try {
@@ -31,78 +28,68 @@ async function verifyTurnstileToken(token) {
 }
 
 async function extractMetadata(buffer, url) {
-  let tempFilePath = null;
-
   try {
-    // Create temp file with minimal options
-    const tempFileName = `temp-${uuidv4()}${path.extname(url)}`;
-    tempFilePath = path.join('/tmp', tempFileName);
-    await writeFile(tempFilePath, buffer);
+    console.log('Starting metadata extraction...');
 
-    // Minimal ExifTool options for faster processing
-    const exiftoolOptions = [
-      '-fast',
-      '-fast2',
-      '-json',
-      '-n', // Return numeric values
-      '-S', // Very short output
-      '-FileSize',
-      '-ImageSize',
-      '-ImageDescription',
-      '-Artist',
-      '-Copyright',
-      '-XMP:Creator',
-      '-XMP:Rights',
-      '-IPTC:Caption',
-      '-IPTC:CopyrightNotice'
-    ];
+    // Extract EXIF and IPTC data using ExifReader
+    const tags = await ExifReader.load(buffer, { expanded: true });
+    console.log('ExifReader tags loaded');
 
-    // Set a shorter timeout
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Metadata extraction timeout')), 15000);
-    });
+    // Extract XMP data
+    const xmp = new XMP(buffer);
+    const xmpData = xmp.parse();
+    console.log('XMP data parsed');
 
-    // Extract metadata with timeout
-    const metadata = await Promise.race([
-      exiftoolProcess.read(tempFilePath, exiftoolOptions),
-      timeoutPromise
-    ]);
+    // Helper function to safely get values
+    const getValue = (obj, key, defaultValue = "N/A") => {
+      try {
+        if (!obj || !obj[key]) return defaultValue;
+        if (obj[key].description) return obj[key].description;
+        if (obj[key].value) return obj[key].value;
+        return obj[key] || defaultValue;
+      } catch (e) {
+        return defaultValue;
+      }
+    };
 
-    // Create minimal metadata object
-    return {
+    // Create metadata object
+    const metadata = {
       File: {
         Url: url,
         FileName: path.basename(url),
-        FileSize: metadata.FileSize || 0,
-        ImageWidth: metadata.ImageWidth || 0,
-        ImageHeight: metadata.ImageHeight || 0
+        FileSize: buffer.length,
+        ImageWidth: getValue(tags, 'ImageWidth'),
+        ImageHeight: getValue(tags, 'ImageHeight')
       },
       EXIF: {
-        ImageDescription: metadata.ImageDescription || 'N/A',
-        Artist: metadata.Artist || 'N/A',
-        Copyright: metadata.Copyright || 'N/A'
+        Make: getValue(tags.exif, 'Make'),
+        Model: getValue(tags.exif, 'Model'),
+        Software: getValue(tags.exif, 'Software'),
+        ImageDescription: getValue(tags.exif, 'ImageDescription'),
+        Artist: getValue(tags.exif, 'Artist'),
+        Copyright: getValue(tags.exif, 'Copyright')
       },
       IPTC: {
-        Caption: metadata.Caption || 'N/A',
-        CopyrightNotice: metadata.CopyrightNotice || 'N/A'
+        Caption: getValue(tags.iptc, 'Caption'),
+        CopyrightNotice: getValue(tags.iptc, 'CopyrightNotice'),
+        Creator: getValue(tags.iptc, 'Creator'),
+        Keywords: getValue(tags.iptc, 'Keywords')
       },
       XMP: {
-        Creator: metadata.Creator || 'N/A',
-        Rights: metadata.Rights || 'N/A'
+        Creator: getValue(xmpData, 'dc:creator'),
+        Rights: getValue(xmpData, 'dc:rights'),
+        Title: getValue(xmpData, 'dc:title'),
+        Description: getValue(xmpData, 'dc:description'),
+        License: getValue(xmpData, 'xmpRights:WebStatement'),
+        UsageTerms: getValue(xmpData, 'xmpRights:UsageTerms')
       }
     };
+
+    return metadata;
 
   } catch (error) {
     console.error('Metadata extraction error:', error);
     throw error;
-  } finally {
-    if (tempFilePath) {
-      try {
-        await unlink(tempFilePath);
-      } catch (error) {
-        console.error('Cleanup error:', error);
-      }
-    }
   }
 }
 
@@ -118,13 +105,13 @@ const handler = async (req, res) => {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    // Quick CAPTCHA check
+    // Verify CAPTCHA
     const verification = await verifyTurnstileToken(turnstileToken);
     if (!verification.success) {
       return res.status(400).json({ error: 'Invalid CAPTCHA' });
     }
 
-    // Fast image fetch
+    // Fetch image with timeout
     const imageResponse = await fetch(url, {
       timeout: 5000,
       headers: {
@@ -163,7 +150,7 @@ module.exports = {
         sizeLimit: '1mb',
       },
       responseLimit: false,
-      maxDuration: 20
+      maxDuration: 10
     }
   }
 };
