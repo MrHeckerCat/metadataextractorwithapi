@@ -1,7 +1,5 @@
 const path = require('path');
-const { ExiftoolProcess } = require('node-exiftool');
-const exiftoolBin = require('dist-exiftool');
-const { Readable } = require('stream');
+const { exiftool } = require('exiftool-vendored');
 
 async function verifyTurnstileToken(token) {
   try {
@@ -23,33 +21,20 @@ async function verifyTurnstileToken(token) {
 }
 
 async function extractMetadata(buffer, url) {
-  const ep = new ExiftoolProcess(exiftoolBin, { taskTimeoutMillis: 15000 });
+  let tempFilePath = null;
 
   try {
     console.log('Starting metadata extraction...');
 
-    // Create a readable stream from the buffer
-    const stream = new Readable();
-    stream.push(buffer);
-    stream.push(null);
+    // Create temp file in /tmp (works in Vercel)
+    const tempFileName = `temp-${Date.now()}.jpg`;
+    tempFilePath = path.join('/tmp', tempFileName);
+    require('fs').writeFileSync(tempFilePath, buffer);
 
-    // Start ExifTool process
-    await ep.open();
-    console.log('ExifTool process started');
-
-    // Extract metadata with all available tags
-    const result = await ep.readMetadata(stream, [
-      '-File:all',
-      '-EXIF:all',
-      '-XMP:all',
-      '-IPTC:all',
-      '-j' // JSON output
-    ]);
-
+    // Extract metadata
+    const metadata = await exiftool.read(tempFilePath);
     console.log('Metadata extracted successfully');
 
-    // Format the metadata
-    const metadata = result.data[0] || {};
     return {
       File: {
         Url: url,
@@ -95,12 +80,14 @@ async function extractMetadata(buffer, url) {
     console.error('Metadata extraction error:', error);
     throw error;
   } finally {
-    // Always close the ExifTool process
-    try {
-      await ep.end();
-      console.log('ExifTool process ended');
-    } catch (error) {
-      console.error('Error ending ExifTool process:', error);
+    // Cleanup temp file
+    if (tempFilePath) {
+      try {
+        require('fs').unlinkSync(tempFilePath);
+        console.log('Temporary file cleaned up');
+      } catch (error) {
+        console.error('Cleanup error:', error);
+      }
     }
   }
 }
