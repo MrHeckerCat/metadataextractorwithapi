@@ -39,27 +39,42 @@ async function verifyTurnstileToken(token) {
 
 async function extractMetadata(buffer, url) {
   let tempFilePath = null;
-  const et = await getExiftool();
+  let et = null;
 
   try {
+    console.log('Initializing ExifTool...');
+    et = await getExiftool();
+
     console.log('Creating temporary file...');
     const tempFileName = `temp-${uuidv4()}${path.extname(url)}`;
-    tempFilePath = path.join('/tmp', tempFileName); // Use /tmp directly on Vercel
+    tempFilePath = path.join('/tmp', tempFileName);
     await writeFile(tempFilePath, buffer);
     console.log('Temporary file created at:', tempFilePath);
 
-    // Set a timeout for the exiftool operation
-    const exifToolTimeout = 30000; // 30 seconds
-    const metadataPromise = et.read(tempFilePath);
+    // Increase timeout for ExifTool operation
+    const exifToolTimeout = 45000; // 45 seconds
+    console.log('Starting metadata extraction with timeout:', exifToolTimeout);
 
-    console.log('Starting metadata extraction...');
+    const metadataPromise = et.read(tempFilePath).catch(error => {
+      console.error('ExifTool read error:', error);
+      throw error;
+    });
+
     const metadata = await Promise.race([
       metadataPromise,
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('ExifTool operation timed out')), exifToolTimeout)
+        setTimeout(() => {
+          console.error('ExifTool operation timeout reached:', exifToolTimeout);
+          reject(new Error(`ExifTool operation timed out after ${exifToolTimeout / 1000} seconds`));
+        }, exifToolTimeout)
       )
     ]);
-    console.log('Metadata extraction completed');
+
+    if (!metadata) {
+      throw new Error('No metadata extracted from image');
+    }
+
+    console.log('Metadata extraction completed successfully');
 
     // Helper function to get value with N/A default
     const getValue = (obj, key, defaultValue = "N/A") => {
@@ -496,15 +511,32 @@ async function extractMetadata(buffer, url) {
     return metadataObject;
 
   } catch (error) {
-    console.error('Metadata extraction error:', error);
+    console.error('Detailed metadata extraction error:', {
+      error: error.message,
+      stack: error.stack,
+      tempFile: tempFilePath,
+      imageUrl: url
+    });
     throw error;
   } finally {
+    // Cleanup
     if (tempFilePath) {
       try {
         await unlink(tempFilePath);
-        console.log('Temporary file cleaned up');
+        console.log('Temporary file cleaned up:', tempFilePath);
       } catch (unlinkError) {
-        console.error('Error deleting temporary file:', unlinkError);
+        console.error('Error deleting temporary file:', {
+          error: unlinkError,
+          path: tempFilePath
+        });
+      }
+    }
+    if (et) {
+      try {
+        await et.end();
+        console.log('ExifTool process ended');
+      } catch (endError) {
+        console.error('Error ending ExifTool process:', endError);
       }
     }
   }
@@ -524,9 +556,9 @@ const handler = async (req, res) => {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    // Reduce timeout to 50 seconds to ensure we complete before Vercel's 60s limit
+    // Increase overall timeout to 55 seconds
     const requestTimeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timed out')), 50000);
+      setTimeout(() => reject(new Error('Request timed out after 55 seconds')), 55000);
     });
 
     const processRequest = async () => {
@@ -536,7 +568,7 @@ const handler = async (req, res) => {
       }
 
       const imageResponse = await fetch(url, {
-        timeout: 10000, // Reduce fetch timeout to 10 seconds
+        timeout: 15000, // Increase fetch timeout to 15 seconds
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
