@@ -8,7 +8,7 @@ const iptc = require('node-iptc');
 const os = require('os');
 const { writeFile, unlink } = require('fs/promises');
 
-// Initialize ExifTool
+// Initialize ExifTool with a single instance
 const exiftoolProcess = exiftool;
 
 async function verifyTurnstileToken(token) {
@@ -31,88 +31,76 @@ async function verifyTurnstileToken(token) {
 }
 
 async function extractMetadata(buffer, url) {
-  let blobUrl = null;
   let tempFilePath = null;
 
   try {
-    // Create temp file in /tmp directory (works in Vercel)
+    // Create temp file with minimal options
     const tempFileName = `temp-${uuidv4()}${path.extname(url)}`;
     tempFilePath = path.join('/tmp', tempFileName);
     await writeFile(tempFilePath, buffer);
-    console.log('Temporary file created:', tempFilePath);
 
-    // ExifTool options
+    // Minimal ExifTool options for faster processing
     const exiftoolOptions = [
       '-fast',
       '-fast2',
       '-json',
-      '-charset', 'filename=utf8',
-      '-ignoreMinorErrors',
+      '-n', // Return numeric values
+      '-S', // Very short output
       '-FileSize',
       '-ImageSize',
       '-ImageDescription',
       '-Artist',
       '-Copyright',
-      '-XMP:all',
-      '-IPTC:all',
-      '-ExifIFD:all',
-      '-GPS:all'
+      '-XMP:Creator',
+      '-XMP:Rights',
+      '-IPTC:Caption',
+      '-IPTC:CopyrightNotice'
     ];
 
-    console.log('Starting metadata extraction...');
-    const metadata = await exiftoolProcess.read(tempFilePath, exiftoolOptions);
-    console.log('Raw metadata:', metadata);
+    // Set a shorter timeout
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Metadata extraction timeout')), 15000);
+    });
 
-    const metadataObject = {
+    // Extract metadata with timeout
+    const metadata = await Promise.race([
+      exiftoolProcess.read(tempFilePath, exiftoolOptions),
+      timeoutPromise
+    ]);
+
+    // Create minimal metadata object
+    return {
       File: {
         Url: url,
         FileName: path.basename(url),
         FileSize: metadata.FileSize || 0,
         ImageWidth: metadata.ImageWidth || 0,
-        ImageHeight: metadata.ImageHeight || 0,
-        FileType: metadata.FileType || 'N/A',
-        MIMEType: metadata.MIMEType || 'N/A'
+        ImageHeight: metadata.ImageHeight || 0
       },
       EXIF: {
         ImageDescription: metadata.ImageDescription || 'N/A',
         Artist: metadata.Artist || 'N/A',
-        Copyright: metadata.Copyright || 'N/A',
-        ModifyDate: metadata.ModifyDate || 'N/A',
-        CreateDate: metadata.CreateDate || 'N/A',
-        DateTimeOriginal: metadata.DateTimeOriginal || 'N/A'
+        Copyright: metadata.Copyright || 'N/A'
       },
       IPTC: {
         Caption: metadata.Caption || 'N/A',
-        Headline: metadata.Headline || 'N/A',
-        Keywords: metadata.Keywords || 'N/A',
-        Credit: metadata.Credit || 'N/A',
-        CopyrightNotice: metadata.CopyrightNotice || 'N/A',
-        'By-line': metadata['By-line'] || 'N/A'
+        CopyrightNotice: metadata.CopyrightNotice || 'N/A'
       },
       XMP: {
         Creator: metadata.Creator || 'N/A',
-        Rights: metadata.Rights || 'N/A',
-        Title: metadata.Title || 'N/A',
-        Description: metadata.Description || 'N/A',
-        UsageTerms: metadata.UsageTerms || 'N/A',
-        WebStatement: metadata.WebStatement || 'N/A',
-        LicensorURL: metadata.LicensorURL || 'N/A'
+        Rights: metadata.Rights || 'N/A'
       }
     };
-
-    return metadataObject;
 
   } catch (error) {
     console.error('Metadata extraction error:', error);
     throw error;
   } finally {
-    // Clean up temp file
     if (tempFilePath) {
       try {
         await unlink(tempFilePath);
-        console.log('Temporary file deleted:', tempFilePath);
       } catch (error) {
-        console.error('Error deleting temporary file:', error);
+        console.error('Cleanup error:', error);
       }
     }
   }
@@ -130,13 +118,13 @@ const handler = async (req, res) => {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    // Verify CAPTCHA
+    // Quick CAPTCHA check
     const verification = await verifyTurnstileToken(turnstileToken);
     if (!verification.success) {
       return res.status(400).json({ error: 'Invalid CAPTCHA' });
     }
 
-    // Fetch image
+    // Fast image fetch
     const imageResponse = await fetch(url, {
       timeout: 5000,
       headers: {
@@ -157,7 +145,8 @@ const handler = async (req, res) => {
 
   } catch (error) {
     console.error('API error:', error);
-    return res.status(500).json({
+    const isTimeout = error.message.includes('timeout');
+    return res.status(isTimeout ? 408 : 500).json({
       error: 'Request failed',
       details: error.message
     });
@@ -174,7 +163,7 @@ module.exports = {
         sizeLimit: '1mb',
       },
       responseLimit: false,
-      maxDuration: 10
+      maxDuration: 20
     }
   }
 };
