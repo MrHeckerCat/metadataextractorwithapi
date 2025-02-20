@@ -7,13 +7,20 @@ const icc = require('icc');
 const jpeg = require('jpeg-js');
 const ExifReader = require('exifreader');
 
-// Initialize ExifTool once and reuse
+// Initialize ExifTool with specific options for better performance
+const exiftoolOptions = {
+  taskTimeoutMillis: 20000, // Reduce individual task timeout
+  maxTasksPerProcess: 1, // Limit concurrent tasks
+  minDelayBetweenSpawns: 100, // Add delay between spawns
+  maxProcs: 1 // Limit to single process
+};
+
 let exiftoolProcess = null;
 
 async function getExiftool() {
   if (!exiftoolProcess) {
     console.log('Initializing ExifTool...');
-    exiftoolProcess = exiftool;
+    exiftoolProcess = new exiftool.ExifTool(exiftoolOptions);
     // Warm up ExifTool
     await exiftoolProcess.version();
     console.log('ExifTool initialized successfully');
@@ -45,18 +52,27 @@ async function extractMetadata(buffer, url) {
   let et = null;
 
   try {
-    // Initialize ExifTool first
     console.log('Getting ExifTool instance...');
     et = await getExiftool();
 
+    // Create temp file with a smaller buffer size
     console.log('Creating temporary file...');
     const tempFileName = `temp-${uuidv4()}${path.extname(url)}`;
     tempFilePath = path.join('/tmp', tempFileName);
-    await writeFile(tempFilePath, buffer);
+
+    // Write file in chunks to avoid memory issues
+    const chunkSize = 1024 * 1024; // 1MB chunks
+    const fd = await require('fs').promises.open(tempFilePath, 'w');
+    for (let i = 0; i < buffer.length; i += chunkSize) {
+      const chunk = buffer.slice(i, i + chunkSize);
+      await fd.write(chunk);
+    }
+    await fd.close();
+
     console.log('Temporary file created at:', tempFilePath);
 
     // Reduce timeout and add progress logging
-    const exifToolTimeout = 25000; // 25 seconds
+    const exifToolTimeout = 15000; // 15 seconds
     console.log('Starting metadata extraction with timeout:', exifToolTimeout);
 
     let timeoutId;
@@ -67,16 +83,21 @@ async function extractMetadata(buffer, url) {
       }, exifToolTimeout);
     });
 
-    const metadataPromise = et.read(tempFilePath)
-      .then(result => {
-        clearTimeout(timeoutId);
-        return result;
-      })
-      .catch(error => {
-        clearTimeout(timeoutId);
-        console.error('ExifTool read error:', error);
-        throw error;
-      });
+    // Use more efficient ExifTool options
+    const metadataPromise = et.readMetadata(tempFilePath, [
+      '-fast',
+      '-fast2',
+      '-m',
+      '-q',
+      '-n'
+    ]).then(result => {
+      clearTimeout(timeoutId);
+      return result;
+    }).catch(error => {
+      clearTimeout(timeoutId);
+      console.error('ExifTool read error:', error);
+      throw error;
+    });
 
     const metadata = await Promise.race([metadataPromise, timeoutPromise]);
 
@@ -557,8 +578,6 @@ const handler = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  let et = null;
-
   try {
     const { url, turnstileToken } = req.body;
 
@@ -566,9 +585,9 @@ const handler = async (req, res) => {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    // Adjust timeouts
+    // Reduce overall timeout
     const requestTimeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timed out after 30 seconds')), 30000);
+      setTimeout(() => reject(new Error('Request timed out after 25 seconds')), 25000);
     });
 
     const processRequest = async () => {
@@ -577,8 +596,9 @@ const handler = async (req, res) => {
         throw new Error('Invalid CAPTCHA');
       }
 
+      // Use more efficient image fetching
       const imageResponse = await fetch(url, {
-        timeout: 8000, // 8 seconds for fetch
+        timeout: 5000, // 5 seconds for fetch
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
@@ -588,15 +608,18 @@ const handler = async (req, res) => {
         throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
       }
 
-      const arrayBuffer = await imageResponse.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+      // Stream the response instead of loading it all into memory
+      const chunks = [];
+      for await (const chunk of imageResponse.body) {
+        chunks.push(chunk);
+      }
+      const buffer = Buffer.concat(chunks);
 
       return await extractMetadata(buffer, url);
     };
 
     const metadata = await Promise.race([processRequest(), requestTimeout]);
     return res.status(200).json(metadata);
-
   } catch (error) {
     console.error('API error:', {
       message: error.message,
@@ -617,15 +640,6 @@ const handler = async (req, res) => {
             500;
 
     return res.status(statusCode).json(errorResponse);
-
-  } finally {
-    if (et) {
-      try {
-        await et.end();
-      } catch (cleanupError) {
-        console.error('Error cleaning up ExifTool:', cleanupError);
-      }
-    }
   }
 };
 
@@ -636,10 +650,10 @@ module.exports = {
   config: {
     api: {
       bodyParser: {
-        sizeLimit: '2mb', // Reduce size limit
+        sizeLimit: '1mb', // Further reduce size limit
       },
       responseLimit: false,
-      maxDuration: 30 // Reduce to 30 seconds
+      maxDuration: 25 // Reduce to 25 seconds
     }
   }
 };
