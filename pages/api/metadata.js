@@ -1,12 +1,26 @@
 const path = require('path');
-const ExifReader = require('exifreader');
-const XMP = require('xmp-js');
+const { exiftool } = require('exiftool-vendored');
 const { v4: uuidv4 } = require('uuid');
 const { put, del } = require('@vercel/blob');
 const probe = require('probe-image-size');
 const iptc = require('node-iptc');
 const os = require('os');
 const { writeFile, unlink } = require('fs/promises');
+
+// Initialize ExifTool with specific options
+const exiftoolOptions = [
+  '-json',
+  '-fast',
+  '-charset', 'filename=utf8',
+  '-FileSize',
+  '-ImageSize',
+  '-ImageDescription',
+  '-Artist',
+  '-Copyright',
+  '-XMP:all',
+  '-IPTC:all',
+  '-ExifIFD:all'
+];
 
 async function verifyTurnstileToken(token) {
   try {
@@ -28,68 +42,70 @@ async function verifyTurnstileToken(token) {
 }
 
 async function extractMetadata(buffer, url) {
+  let tempFilePath = null;
+
   try {
-    console.log('Starting metadata extraction...');
+    // Create temp file in /tmp (works in Vercel)
+    const tempFileName = `temp-${uuidv4()}${path.extname(url)}`;
+    tempFilePath = path.join('/tmp', tempFileName);
+    await writeFile(tempFilePath, buffer);
 
-    // Extract EXIF and IPTC data using ExifReader
-    const tags = await ExifReader.load(buffer, { expanded: true });
-    console.log('ExifReader tags loaded');
+    // Extract metadata with timeout
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Metadata extraction timeout')), 8000);
+    });
 
-    // Extract XMP data
-    const xmp = new XMP(buffer);
-    const xmpData = xmp.parse();
-    console.log('XMP data parsed');
-
-    // Helper function to safely get values
-    const getValue = (obj, key, defaultValue = "N/A") => {
-      try {
-        if (!obj || !obj[key]) return defaultValue;
-        if (obj[key].description) return obj[key].description;
-        if (obj[key].value) return obj[key].value;
-        return obj[key] || defaultValue;
-      } catch (e) {
-        return defaultValue;
-      }
-    };
+    const metadataPromise = exiftool.read(tempFilePath, exiftoolOptions);
+    const metadata = await Promise.race([metadataPromise, timeoutPromise]);
 
     // Create metadata object
-    const metadata = {
+    const metadataObject = {
       File: {
         Url: url,
         FileName: path.basename(url),
-        FileSize: buffer.length,
-        ImageWidth: getValue(tags, 'ImageWidth'),
-        ImageHeight: getValue(tags, 'ImageHeight')
+        FileSize: metadata.FileSize || buffer.length,
+        ImageWidth: metadata.ImageWidth || 0,
+        ImageHeight: metadata.ImageHeight || 0,
+        MIMEType: metadata.MIMEType || 'N/A'
       },
       EXIF: {
-        Make: getValue(tags.exif, 'Make'),
-        Model: getValue(tags.exif, 'Model'),
-        Software: getValue(tags.exif, 'Software'),
-        ImageDescription: getValue(tags.exif, 'ImageDescription'),
-        Artist: getValue(tags.exif, 'Artist'),
-        Copyright: getValue(tags.exif, 'Copyright')
+        Make: metadata.Make || 'N/A',
+        Model: metadata.Model || 'N/A',
+        Software: metadata.Software || 'N/A',
+        ImageDescription: metadata.ImageDescription || 'N/A',
+        Artist: metadata.Artist || 'N/A',
+        Copyright: metadata.Copyright || 'N/A'
       },
       IPTC: {
-        Caption: getValue(tags.iptc, 'Caption'),
-        CopyrightNotice: getValue(tags.iptc, 'CopyrightNotice'),
-        Creator: getValue(tags.iptc, 'Creator'),
-        Keywords: getValue(tags.iptc, 'Keywords')
+        Caption: metadata.Caption || 'N/A',
+        CopyrightNotice: metadata.CopyrightNotice || 'N/A',
+        Creator: metadata.Creator || 'N/A',
+        Keywords: metadata.Keywords || 'N/A'
       },
       XMP: {
-        Creator: getValue(xmpData, 'dc:creator'),
-        Rights: getValue(xmpData, 'dc:rights'),
-        Title: getValue(xmpData, 'dc:title'),
-        Description: getValue(xmpData, 'dc:description'),
-        License: getValue(xmpData, 'xmpRights:WebStatement'),
-        UsageTerms: getValue(xmpData, 'xmpRights:UsageTerms')
+        Creator: metadata.Creator || 'N/A',
+        Rights: metadata.Rights || 'N/A',
+        Title: metadata.Title || 'N/A',
+        Description: metadata.Description || 'N/A',
+        License: metadata.WebStatement || 'N/A',
+        UsageTerms: metadata.UsageTerms || 'N/A'
       }
     };
 
-    return metadata;
+    return metadataObject;
 
   } catch (error) {
     console.error('Metadata extraction error:', error);
     throw error;
+  } finally {
+    // Cleanup
+    if (tempFilePath) {
+      try {
+        await unlink(tempFilePath);
+      } catch (error) {
+        console.error('Cleanup error:', error);
+      }
+    }
   }
 }
 
@@ -128,6 +144,10 @@ const handler = async (req, res) => {
 
     const buffer = Buffer.from(await imageResponse.arrayBuffer());
     const metadata = await extractMetadata(buffer, url);
+
+    // End ExifTool process
+    await exiftool.end();
+
     return res.status(200).json(metadata);
 
   } catch (error) {
@@ -137,6 +157,13 @@ const handler = async (req, res) => {
       error: 'Request failed',
       details: error.message
     });
+  } finally {
+    // Ensure ExifTool process is ended
+    try {
+      await exiftool.end();
+    } catch (error) {
+      console.error('Error ending ExifTool:', error);
+    }
   }
 };
 
