@@ -238,23 +238,12 @@ export default function Home() {
         {metadata && (
           <div className={styles.metadata}>
             <h2>Metadata Results</h2>
-            <MetadataDisplay metadata={metadata} />
-            <div className={styles.metadataActions}>
-              <button onClick={copyMetadata} className={styles.copyButton}>
-                {copySuccess || 'Copy Raw Data'}
-              </button>
-              <button
-                onClick={() => setShowRawData(!showRawData)}
-                className={styles.toggleButton}
-              >
-                {showRawData ? 'Show Formatted View' : 'Show Raw Data'}
-              </button>
-            </div>
-            {showRawData && (
-              <pre className={styles.rawData}>
-                {JSON.stringify(metadata, null, 2)}
-              </pre>
-            )}
+            <button onClick={copyMetadata} className={styles.copyButton}>
+              {copySuccess || 'Copy Metadata'}
+            </button>
+            <pre className={styles.rawData}>
+              {JSON.stringify(metadata, null, 2)}
+            </pre>
             {showFeedback && <FeedbackMessage />}
           </div>
         )}
