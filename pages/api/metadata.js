@@ -1,36 +1,10 @@
 const path = require('path');
 const ExifReader = require('exifreader');
 const { v4: uuidv4 } = require('uuid');
-const { put, del } = require('@vercel/blob');
+
+// Remove unused imports
 const probe = require('probe-image-size');
 const iptc = require('node-iptc');
-const os = require('os');
-const { writeFile, unlink } = require('fs/promises');
-
-// Initialize ExifTool with custom settings
-const exiftool = new ExifTool({
-  taskTimeoutMillis: 20000, // 20 seconds timeout
-  maxTasksPerProcess: 1,    // Limit concurrent tasks
-  minDelayBetweenSpawns: 100, // Add delay between spawns
-  maxProcs: 1,             // Limit to single process
-  enableHeapUsageLimit: true, // Enable memory limits
-  maxHeapUsagePercent: 50  // Limit memory usage
-});
-
-// ExifTool options for faster processing
-const exiftoolOptions = [
-  '-json',
-  '-fast',
-  '-charset', 'filename=utf8',
-  '-FileSize',
-  '-ImageSize',
-  '-ImageDescription',
-  '-Artist',
-  '-Copyright',
-  '-XMP:all',
-  '-IPTC:all',
-  '-ExifIFD:all'
-];
 
 async function verifyTurnstileToken(token) {
   try {
@@ -187,14 +161,6 @@ export default async function handler(req, res) {
       error: 'Request failed',
       details: error.message
     });
-  } finally {
-    // Ensure ExifTool process is ended
-    try {
-      await exiftool.end();
-      console.log('ExifTool process ended');
-    } catch (error) {
-      console.error('Error ending ExifTool:', error);
-    }
   }
 }
 
