@@ -1,5 +1,5 @@
 const path = require('path');
-const { ExifTool } = require('exiftool-vendored');
+const ExifReader = require('exifreader');
 const { v4: uuidv4 } = require('uuid');
 const { put, del } = require('@vercel/blob');
 const probe = require('probe-image-size');
@@ -52,67 +52,87 @@ async function verifyTurnstileToken(token) {
 }
 
 async function extractMetadata(buffer, url) {
-  let tempFilePath = null;
-
   try {
-    // Create temp file in /tmp (works in Vercel)
-    const tempFileName = `temp-${uuidv4()}${path.extname(url)}`;
-    tempFilePath = path.join('/tmp', tempFileName);
-    await writeFile(tempFilePath, buffer);
-
     console.log('Starting metadata extraction...');
-    const metadata = await exiftool.read(tempFilePath, exiftoolOptions);
-    console.log('Metadata extracted successfully');
+
+    // Load tags with expanded data
+    const tags = await ExifReader.load(buffer, { expanded: true });
+    console.log('Tags loaded successfully');
+
+    // Helper function to safely get values
+    const getValue = (obj, key, defaultValue = "N/A") => {
+      try {
+        if (!obj || !obj[key]) return defaultValue;
+        if (obj[key].description) return obj[key].description;
+        if (obj[key].value) return obj[key].value;
+        if (Array.isArray(obj[key])) return obj[key].join(', ');
+        return String(obj[key]) || defaultValue;
+      } catch (e) {
+        return defaultValue;
+      }
+    };
+
+    // Helper function for numeric values
+    const getNumValue = (obj, key, defaultValue = 0) => {
+      try {
+        const value = getValue(obj, key, null);
+        if (value === null) return defaultValue;
+        const num = parseFloat(value);
+        return isNaN(num) ? defaultValue : num;
+      } catch (e) {
+        return defaultValue;
+      }
+    };
 
     // Create metadata object
     const metadataObject = {
       File: {
         Url: url,
         FileName: path.basename(url),
-        FileSize: metadata.FileSize || buffer.length,
-        ImageWidth: metadata.ImageWidth || 0,
-        ImageHeight: metadata.ImageHeight || 0,
-        MIMEType: metadata.MIMEType || 'N/A'
+        FileSize: buffer.length,
+        ImageWidth: getNumValue(tags.file, 'ImageWidth'),
+        ImageHeight: getNumValue(tags.file, 'ImageHeight'),
+        MIMEType: getValue(tags.file, 'MIMEType')
       },
       EXIF: {
-        Make: metadata.Make || 'N/A',
-        Model: metadata.Model || 'N/A',
-        Software: metadata.Software || 'N/A',
-        ImageDescription: metadata.ImageDescription || 'N/A',
-        Artist: metadata.Artist || 'N/A',
-        Copyright: metadata.Copyright || 'N/A'
+        Make: getValue(tags.exif, 'Make'),
+        Model: getValue(tags.exif, 'Model'),
+        Software: getValue(tags.exif, 'Software'),
+        ModifyDate: getValue(tags.exif, 'ModifyDate'),
+        DateTimeOriginal: getValue(tags.exif, 'DateTimeOriginal'),
+        CreateDate: getValue(tags.exif, 'CreateDate'),
+        ImageDescription: getValue(tags.exif, 'ImageDescription'),
+        Artist: getValue(tags.exif, 'Artist'),
+        Copyright: getValue(tags.exif, 'Copyright'),
+        ExposureTime: getValue(tags.exif, 'ExposureTime'),
+        FNumber: getValue(tags.exif, 'FNumber'),
+        ISO: getValue(tags.exif, 'ISO'),
+        FocalLength: getValue(tags.exif, 'FocalLength')
       },
       IPTC: {
-        Caption: metadata.Caption || 'N/A',
-        CopyrightNotice: metadata.CopyrightNotice || 'N/A',
-        Creator: metadata.Creator || 'N/A',
-        Keywords: metadata.Keywords || 'N/A'
+        Caption: getValue(tags.iptc, 'Caption'),
+        Headline: getValue(tags.iptc, 'Headline'),
+        Keywords: getValue(tags.iptc, 'Keywords'),
+        CopyrightNotice: getValue(tags.iptc, 'CopyrightNotice'),
+        Creator: getValue(tags.iptc, 'Creator'),
+        DateCreated: getValue(tags.iptc, 'DateCreated')
       },
       XMP: {
-        Creator: metadata.Creator || 'N/A',
-        Rights: metadata.Rights || 'N/A',
-        Title: metadata.Title || 'N/A',
-        Description: metadata.Description || 'N/A',
-        License: metadata.WebStatement || 'N/A',
-        UsageTerms: metadata.UsageTerms || 'N/A'
+        Creator: getValue(tags.xmp, 'Creator'),
+        Rights: getValue(tags.xmp, 'Rights'),
+        Title: getValue(tags.xmp, 'Title'),
+        Description: getValue(tags.xmp, 'Description'),
+        License: getValue(tags.xmp, 'WebStatement'),
+        UsageTerms: getValue(tags.xmp, 'UsageTerms')
       }
     };
 
+    console.log('Metadata extraction completed');
     return metadataObject;
 
   } catch (error) {
     console.error('Metadata extraction error:', error);
     throw error;
-  } finally {
-    // Cleanup
-    if (tempFilePath) {
-      try {
-        await unlink(tempFilePath);
-        console.log('Temporary file cleaned up');
-      } catch (error) {
-        console.error('Cleanup error:', error);
-      }
-    }
   }
 }
 
@@ -151,7 +171,6 @@ const handler = async (req, res) => {
 
     const buffer = Buffer.from(await imageResponse.arrayBuffer());
     const metadata = await extractMetadata(buffer, url);
-
     return res.status(200).json(metadata);
 
   } catch (error) {
@@ -182,7 +201,7 @@ module.exports = {
         sizeLimit: '1mb',
       },
       responseLimit: false,
-      maxDuration: 25 // Increased to match ExifTool timeout
+      maxDuration: 10
     }
   }
 };
