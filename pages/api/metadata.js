@@ -13,7 +13,9 @@ const exiftoolOptions = [
   '-fast2',
   '-m',
   '-q',
-  '-n'
+  '-n',
+  '-j', // Output JSON format
+  '-coordFormat', '%d' // Simpler coordinate format
 ];
 
 let exiftoolProcess = null;
@@ -61,41 +63,20 @@ async function extractMetadata(buffer, url) {
     const tempFileName = `temp-${uuidv4()}${path.extname(url)}`;
     tempFilePath = path.join('/tmp', tempFileName);
 
-    // Write file in chunks to avoid memory issues
-    const chunkSize = 1024 * 1024; // 1MB chunks
-    const fd = await require('fs').promises.open(tempFilePath, 'w');
-    for (let i = 0; i < buffer.length; i += chunkSize) {
-      const chunk = buffer.slice(i, i + chunkSize);
-      await fd.write(chunk);
-    }
-    await fd.close();
-
+    // Write file directly instead of chunking
+    await writeFile(tempFilePath, buffer);
     console.log('Temporary file created at:', tempFilePath);
 
-    // Reduce timeout and add progress logging
-    const exifToolTimeout = 15000; // 15 seconds
+    // Reduce timeout further
+    const exifToolTimeout = 10000; // 10 seconds
     console.log('Starting metadata extraction with timeout:', exifToolTimeout);
 
-    let timeoutId;
-    const timeoutPromise = new Promise((_, reject) => {
-      timeoutId = setTimeout(() => {
-        console.error('ExifTool operation timeout reached:', exifToolTimeout);
-        reject(new Error(`ExifTool operation timed out after ${exifToolTimeout / 1000} seconds`));
-      }, exifToolTimeout);
-    });
-
-    const metadataPromise = et.read(tempFilePath, exiftoolOptions)
-      .then(result => {
-        clearTimeout(timeoutId);
-        return result;
-      })
-      .catch(error => {
-        clearTimeout(timeoutId);
-        console.error('ExifTool read error:', error);
-        throw error;
-      });
-
-    const metadata = await Promise.race([metadataPromise, timeoutPromise]);
+    const metadata = await Promise.race([
+      et.read(tempFilePath, exiftoolOptions),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('ExifTool extraction timeout')), exifToolTimeout)
+      )
+    ]);
 
     if (!metadata) {
       throw new Error('No metadata extracted from image');
@@ -538,32 +519,16 @@ async function extractMetadata(buffer, url) {
     return metadataObject;
 
   } catch (error) {
-    console.error('Detailed metadata extraction error:', {
-      error: error.message,
-      stack: error.stack,
-      tempFile: tempFilePath,
-      imageUrl: url
-    });
+    console.error('Metadata extraction error:', error);
     throw error;
   } finally {
     // Cleanup
     if (tempFilePath) {
       try {
         await unlink(tempFilePath);
-        console.log('Temporary file cleaned up:', tempFilePath);
+        console.log('Temporary file cleaned up');
       } catch (unlinkError) {
-        console.error('Error deleting temporary file:', {
-          error: unlinkError,
-          path: tempFilePath
-        });
-      }
-    }
-    if (et) {
-      try {
-        await et.end();
-        console.log('ExifTool process ended');
-      } catch (endError) {
-        console.error('Error ending ExifTool process:', endError);
+        console.error('Cleanup error:', unlinkError);
       }
     }
   }
@@ -581,61 +546,41 @@ const handler = async (req, res) => {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    // Reduce overall timeout
-    const requestTimeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timed out after 25 seconds')), 25000);
+    // Verify CAPTCHA first to fail fast if invalid
+    const verification = await verifyTurnstileToken(turnstileToken);
+    if (!verification.success) {
+      return res.status(400).json({ error: 'Invalid CAPTCHA' });
+    }
+
+    // Fetch image with shorter timeout
+    const imageResponse = await fetch(url, {
+      timeout: 5000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
     });
 
-    const processRequest = async () => {
-      const verification = await verifyTurnstileToken(turnstileToken);
-      if (!verification.success) {
-        throw new Error('Invalid CAPTCHA');
-      }
-
-      // Use more efficient image fetching
-      const imageResponse = await fetch(url, {
-        timeout: 5000, // 5 seconds for fetch
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
+    if (!imageResponse.ok) {
+      return res.status(404).json({
+        error: 'Request failed',
+        details: `Failed to fetch image: ${imageResponse.status}`
       });
+    }
 
-      if (!imageResponse.ok) {
-        throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
-      }
-
-      // Stream the response instead of loading it all into memory
-      const chunks = [];
-      for await (const chunk of imageResponse.body) {
-        chunks.push(chunk);
-      }
-      const buffer = Buffer.concat(chunks);
-
-      return await extractMetadata(buffer, url);
-    };
-
-    const metadata = await Promise.race([processRequest(), requestTimeout]);
+    const buffer = Buffer.from(await imageResponse.arrayBuffer());
+    const metadata = await extractMetadata(buffer, url);
     return res.status(200).json(metadata);
+
   } catch (error) {
-    console.error('API error:', {
-      message: error.message,
-      stack: error.stack,
-      url: req.body?.url
-    });
+    console.error('API error:', error);
 
     const errorResponse = {
       error: 'Request failed',
       details: error.message,
-      code: error.message.includes('timed out') ? 'TIMEOUT_ERROR' : 'PROCESSING_ERROR'
+      code: error.message.includes('timeout') ? 'TIMEOUT_ERROR' : 'PROCESSING_ERROR'
     };
 
-    const statusCode =
-      error.message.includes('timed out') ? 408 :
-        error.message.includes('Invalid CAPTCHA') ? 400 :
-          error.message.includes('Failed to fetch') ? 404 :
-            500;
-
-    return res.status(statusCode).json(errorResponse);
+    return res.status(error.message.includes('timeout') ? 408 : 500).json(errorResponse);
   }
 };
 
@@ -646,10 +591,10 @@ module.exports = {
   config: {
     api: {
       bodyParser: {
-        sizeLimit: '1mb', // Further reduce size limit
+        sizeLimit: '1mb',
       },
       responseLimit: false,
-      maxDuration: 25 // Reduce to 25 seconds
+      maxDuration: 15 // Reduce to 15 seconds
     }
   }
 };
