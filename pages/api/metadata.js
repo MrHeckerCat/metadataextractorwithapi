@@ -1,7 +1,7 @@
 const { exiftool } = require('exiftool-vendored');
 const path = require('path');
-const { writeFile, unlink } = require('fs/promises');
 const { v4: uuidv4 } = require('uuid');
+const { put, del } = require('@vercel/blob');
 const ExifReader = require('exifreader');
 const probe = require('probe-image-size');
 const iptc = require('node-iptc');
@@ -30,16 +30,21 @@ async function verifyTurnstileToken(token) {
 }
 
 async function extractMetadata(buffer, url) {
-  let tempFilePath = null;
+  let blobUrl = null;
 
   try {
-    console.log('Creating temporary file...');
-    const tempFileName = `temp-${uuidv4()}${path.extname(url)}`;
-    tempFilePath = path.join(os.tmpdir(), tempFileName);
-    console.log('Temp file path:', tempFilePath);
+    console.log('Uploading to Vercel Blob...');
+    const filename = `temp-${uuidv4()}${path.extname(url)}`;
 
-    await writeFile(tempFilePath, buffer);
-    console.log('Temporary file created successfully');
+    // Upload to Vercel Blob
+    const { url: tempUrl } = await put(filename, buffer, {
+      access: 'public',
+      addRandomSuffix: true,
+      token: process.env.BLOB_READ_WRITE_TOKEN
+    });
+
+    blobUrl = tempUrl;
+    console.log('File uploaded to:', blobUrl);
 
     // Use specific ExifTool options to get only what we need
     const exiftoolOptions = [
@@ -63,7 +68,7 @@ async function extractMetadata(buffer, url) {
     console.log('Starting metadata extraction...');
 
     const metadata = await Promise.race([
-      exiftoolProcess.read(tempFilePath, exiftoolOptions),
+      exiftoolProcess.read(blobUrl, exiftoolOptions),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('ExifTool extraction timeout')), exifToolTimeout)
       )
@@ -113,12 +118,13 @@ async function extractMetadata(buffer, url) {
     console.error('Metadata extraction error:', error);
     throw error;
   } finally {
-    if (tempFilePath) {
+    if (blobUrl) {
       try {
-        await unlink(tempFilePath);
-        console.log('Temporary file cleaned up');
+        // Delete the temporary blob
+        await del(blobUrl);
+        console.log('Temporary blob deleted');
       } catch (error) {
-        console.error('Cleanup error:', error);
+        console.error('Blob cleanup error:', error);
       }
     }
   }
