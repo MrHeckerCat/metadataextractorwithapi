@@ -8,19 +8,20 @@ const jpeg = require('jpeg-js');
 const ExifReader = require('exifreader');
 
 // Initialize ExifTool with specific options for better performance
-const exiftoolOptions = {
-  taskTimeoutMillis: 20000, // Reduce individual task timeout
-  maxTasksPerProcess: 1, // Limit concurrent tasks
-  minDelayBetweenSpawns: 100, // Add delay between spawns
-  maxProcs: 1 // Limit to single process
-};
+const exiftoolOptions = [
+  '-fast',
+  '-fast2',
+  '-m',
+  '-q',
+  '-n'
+];
 
 let exiftoolProcess = null;
 
 async function getExiftool() {
   if (!exiftoolProcess) {
     console.log('Initializing ExifTool...');
-    exiftoolProcess = new exiftool.ExifTool(exiftoolOptions);
+    exiftoolProcess = exiftool;
     // Warm up ExifTool
     await exiftoolProcess.version();
     console.log('ExifTool initialized successfully');
@@ -83,21 +84,16 @@ async function extractMetadata(buffer, url) {
       }, exifToolTimeout);
     });
 
-    // Use more efficient ExifTool options
-    const metadataPromise = et.readMetadata(tempFilePath, [
-      '-fast',
-      '-fast2',
-      '-m',
-      '-q',
-      '-n'
-    ]).then(result => {
-      clearTimeout(timeoutId);
-      return result;
-    }).catch(error => {
-      clearTimeout(timeoutId);
-      console.error('ExifTool read error:', error);
-      throw error;
-    });
+    const metadataPromise = et.read(tempFilePath, exiftoolOptions)
+      .then(result => {
+        clearTimeout(timeoutId);
+        return result;
+      })
+      .catch(error => {
+        clearTimeout(timeoutId);
+        console.error('ExifTool read error:', error);
+        throw error;
+      });
 
     const metadata = await Promise.race([metadataPromise, timeoutPromise]);
 
