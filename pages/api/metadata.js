@@ -1,7 +1,14 @@
+const { exiftool } = require('exiftool-vendored');
 const path = require('path');
 const { writeFile, unlink } = require('fs/promises');
 const { v4: uuidv4 } = require('uuid');
 const ExifReader = require('exifreader');
+const probe = require('probe-image-size');
+const iptc = require('node-iptc');
+const os = require('os');
+
+// Initialize ExifTool with minimal options
+const exiftoolProcess = exiftool;
 
 async function verifyTurnstileToken(token) {
   try {
@@ -23,73 +30,97 @@ async function verifyTurnstileToken(token) {
 }
 
 async function extractMetadata(buffer, url) {
+  let tempFilePath = null;
+
   try {
+    console.log('Creating temporary file...');
+    const tempFileName = `temp-${uuidv4()}${path.extname(url)}`;
+    tempFilePath = path.join(os.tmpdir(), tempFileName);
+    console.log('Temp file path:', tempFilePath);
+
+    await writeFile(tempFilePath, buffer);
+    console.log('Temporary file created successfully');
+
+    // Use specific ExifTool options to get only what we need
+    const exiftoolOptions = [
+      '-fast',
+      '-fast2',
+      '-json',
+      '-charset',
+      'filename=utf8',
+      '-FileSize',
+      '-ImageSize',
+      '-ImageDescription',
+      '-Artist',
+      '-Copyright',
+      '-XMP:all',
+      '-IPTC:all',
+      '-ExifIFD:all',
+      '-GPS:all'
+    ];
+
+    const exifToolTimeout = 8000; // 8 seconds
     console.log('Starting metadata extraction...');
 
-    // Use ExifReader directly on buffer
-    const tags = await ExifReader.load(buffer, { expanded: true });
+    const metadata = await Promise.race([
+      exiftoolProcess.read(tempFilePath, exiftoolOptions),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('ExifTool extraction timeout')), exifToolTimeout)
+      )
+    ]);
 
-    // Helper functions
-    const getValue = (obj, key, defaultValue = "N/A") => {
-      return obj && obj[key] !== undefined ? obj[key] : defaultValue;
-    };
-
-    const getNumValue = (obj, key, defaultValue = 0) => {
-      return obj && obj[key] !== undefined ? obj[key] : defaultValue;
-    };
-
-    // Create metadata object
+    // Create a simplified metadata object
     const metadataObject = {
       File: {
         Url: url,
         FileName: path.basename(url),
-        FileSize: buffer.length,
-        ImageWidth: getValue(tags, 'Image.XResolution'),
-        ImageHeight: getValue(tags, 'Image.YResolution'),
+        FileSize: metadata.FileSize || 0,
+        ImageWidth: metadata.ImageWidth || 0,
+        ImageHeight: metadata.ImageHeight || 0,
+        FileType: metadata.FileType || 'N/A',
+        MIMEType: metadata.MIMEType || 'N/A'
       },
       EXIF: {
-        Make: getValue(tags, 'Exif.Image.Make'),
-        Model: getValue(tags, 'Exif.Image.Model'),
-        Software: getValue(tags, 'Exif.Image.Software'),
-        ModifyDate: getValue(tags, 'Exif.Image.ModifyDate'),
-        Artist: getValue(tags, 'Exif.Image.Artist'),
-        Copyright: getValue(tags, 'Exif.Image.Copyright'),
-        ExposureTime: getValue(tags, 'Exif.Photo.ExposureTime'),
-        FNumber: getNumValue(tags, 'Exif.Photo.FNumber'),
-        ISO: getNumValue(tags, 'Exif.Photo.ISOSpeedRatings'),
-        DateTimeOriginal: getValue(tags, 'Exif.Photo.DateTimeOriginal'),
-        CreateDate: getValue(tags, 'Exif.Photo.CreateDate'),
-        FocalLength: getValue(tags, 'Exif.Photo.FocalLength'),
+        ImageDescription: metadata.ImageDescription || 'N/A',
+        Artist: metadata.Artist || 'N/A',
+        Copyright: metadata.Copyright || 'N/A',
+        ModifyDate: metadata.ModifyDate || 'N/A',
+        CreateDate: metadata.CreateDate || 'N/A',
+        DateTimeOriginal: metadata.DateTimeOriginal || 'N/A'
       },
       IPTC: {
-        Caption: getValue(tags, 'Iptc.Application2.Caption'),
-        Keywords: getValue(tags, 'Iptc.Application2.Keywords'),
-        DateCreated: getValue(tags, 'Iptc.Application2.DateCreated'),
-        TimeCreated: getValue(tags, 'Iptc.Application2.TimeCreated'),
-        By: getValue(tags, 'Iptc.Application2.Byline'),
-        CopyrightNotice: getValue(tags, 'Iptc.Application2.Copyright'),
+        Caption: metadata.Caption || 'N/A',
+        Headline: metadata.Headline || 'N/A',
+        Keywords: metadata.Keywords || 'N/A',
+        Credit: metadata.Credit || 'N/A',
+        CopyrightNotice: metadata.CopyrightNotice || 'N/A',
+        'By-line': metadata['By-line'] || 'N/A'
       },
       XMP: {
-        Creator: getValue(tags, 'Xmp.dc.creator'),
-        Rights: getValue(tags, 'Xmp.dc.rights'),
-        Description: getValue(tags, 'Xmp.dc.description'),
-        Title: getValue(tags, 'Xmp.dc.title'),
-        CreateDate: getValue(tags, 'Xmp.xmp.CreateDate'),
-        ModifyDate: getValue(tags, 'Xmp.xmp.ModifyDate'),
-      },
-      GPS: {
-        Latitude: getValue(tags, 'Exif.GPSInfo.GPSLatitude'),
-        Longitude: getValue(tags, 'Exif.GPSInfo.GPSLongitude'),
-        Altitude: getValue(tags, 'Exif.GPSInfo.GPSAltitude'),
+        Creator: metadata.Creator || 'N/A',
+        Rights: metadata.Rights || 'N/A',
+        Title: metadata.Title || 'N/A',
+        Description: metadata.Description || 'N/A',
+        UsageTerms: metadata.UsageTerms || 'N/A',
+        WebStatement: metadata.WebStatement || 'N/A',
+        LicensorURL: metadata.LicensorURL || 'N/A'
       }
     };
 
-    console.log('Metadata extraction completed');
     return metadataObject;
 
   } catch (error) {
     console.error('Metadata extraction error:', error);
     throw error;
+  } finally {
+    if (tempFilePath) {
+      try {
+        await unlink(tempFilePath);
+        console.log('Temporary file cleaned up');
+      } catch (error) {
+        console.error('Cleanup error:', error);
+      }
+    }
   }
 }
 
