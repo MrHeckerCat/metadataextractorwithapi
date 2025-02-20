@@ -18,16 +18,11 @@ const exiftoolOptions = [
   '-coordFormat', '%d' // Simpler coordinate format
 ];
 
-let exiftoolProcess = null;
+// Initialize ExifTool immediately when the module loads
+const exiftoolProcess = exiftool;
 
 async function getExiftool() {
-  if (!exiftoolProcess) {
-    console.log('Initializing ExifTool...');
-    exiftoolProcess = exiftool;
-    // Warm up ExifTool
-    await exiftoolProcess.version();
-    console.log('ExifTool initialized successfully');
-  }
+  console.log('Getting ExifTool instance...');
   return exiftoolProcess;
 }
 
@@ -52,25 +47,18 @@ async function verifyTurnstileToken(token) {
 
 async function extractMetadata(buffer, url) {
   let tempFilePath = null;
-  let et = null;
 
   try {
-    console.log('Getting ExifTool instance...');
-    et = await getExiftool();
+    const et = await getExiftool();
 
-    // Create temp file with a smaller buffer size
+    // Create temp file
     console.log('Creating temporary file...');
     const tempFileName = `temp-${uuidv4()}${path.extname(url)}`;
     tempFilePath = path.join('/tmp', tempFileName);
-
-    // Write file directly instead of chunking
     await writeFile(tempFilePath, buffer);
-    console.log('Temporary file created at:', tempFilePath);
 
-    // Reduce timeout further
-    const exifToolTimeout = 10000; // 10 seconds
-    console.log('Starting metadata extraction with timeout:', exifToolTimeout);
-
+    // Extract metadata with a shorter timeout
+    const exifToolTimeout = 8000; // 8 seconds
     const metadata = await Promise.race([
       et.read(tempFilePath, exiftoolOptions),
       new Promise((_, reject) =>
@@ -79,10 +67,8 @@ async function extractMetadata(buffer, url) {
     ]);
 
     if (!metadata) {
-      throw new Error('No metadata extracted from image');
+      throw new Error('No metadata extracted');
     }
-
-    console.log('Metadata extraction completed successfully');
 
     // Helper function to get value with N/A default
     const getValue = (obj, key, defaultValue = "N/A") => {
@@ -522,13 +508,11 @@ async function extractMetadata(buffer, url) {
     console.error('Metadata extraction error:', error);
     throw error;
   } finally {
-    // Cleanup
     if (tempFilePath) {
       try {
         await unlink(tempFilePath);
-        console.log('Temporary file cleaned up');
-      } catch (unlinkError) {
-        console.error('Cleanup error:', unlinkError);
+      } catch (error) {
+        console.error('Cleanup error:', error);
       }
     }
   }
@@ -594,7 +578,7 @@ module.exports = {
         sizeLimit: '1mb',
       },
       responseLimit: false,
-      maxDuration: 15 // Reduce to 15 seconds
+      maxDuration: 10
     }
   }
 };
