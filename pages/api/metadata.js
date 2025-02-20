@@ -32,29 +32,14 @@ async function verifyTurnstileToken(token) {
 
 async function extractMetadata(buffer, url) {
   let blobUrl = null;
+  let tempFilePath = null;
 
   try {
-    console.log('Uploading to Vercel Blob...');
-    const filename = `temp-${uuidv4()}${path.extname(url)}`;
-
-    // Upload to Vercel Blob
-    const { url: tempUrl } = await put(filename, buffer, {
-      access: 'public',
-      addRandomSuffix: true,
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-      contentType: 'image/jpeg',
-      cacheControl: 'no-store'
-    });
-
-    blobUrl = tempUrl;
-    console.log('File uploaded to:', blobUrl);
-
-    // Download the blob
-    const blobResponse = await fetch(blobUrl);
-    if (!blobResponse.ok) {
-      throw new Error('Failed to download blob');
-    }
-    const blobBuffer = Buffer.from(await blobResponse.arrayBuffer());
+    // Create temp file in /tmp directory (works in Vercel)
+    const tempFileName = `temp-${uuidv4()}${path.extname(url)}`;
+    tempFilePath = path.join('/tmp', tempFileName);
+    await writeFile(tempFilePath, buffer);
+    console.log('Temporary file created:', tempFilePath);
 
     // ExifTool options
     const exiftoolOptions = [
@@ -75,7 +60,7 @@ async function extractMetadata(buffer, url) {
     ];
 
     console.log('Starting metadata extraction...');
-    const metadata = await exiftoolProcess.read(blobBuffer, exiftoolOptions);
+    const metadata = await exiftoolProcess.read(tempFilePath, exiftoolOptions);
     console.log('Raw metadata:', metadata);
 
     const metadataObject = {
@@ -121,12 +106,13 @@ async function extractMetadata(buffer, url) {
     console.error('Metadata extraction error:', error);
     throw error;
   } finally {
-    if (blobUrl) {
+    // Clean up temp file
+    if (tempFilePath) {
       try {
-        await del(blobUrl);
-        console.log('Blob deleted:', blobUrl);
+        await unlink(tempFilePath);
+        console.log('Temporary file deleted:', tempFilePath);
       } catch (error) {
-        console.error('Blob deletion error:', error);
+        console.error('Error deleting temporary file:', error);
       }
     }
   }
