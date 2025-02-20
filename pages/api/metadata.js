@@ -7,12 +7,15 @@ const icc = require('icc');
 const jpeg = require('jpeg-js');
 const ExifReader = require('exifreader');
 
+// Initialize ExifTool once and reuse
 let exiftoolProcess = null;
 
 async function getExiftool() {
   if (!exiftoolProcess) {
     console.log('Initializing ExifTool...');
     exiftoolProcess = exiftool;
+    // Warm up ExifTool
+    await exiftoolProcess.version();
     console.log('ExifTool initialized successfully');
   }
   return exiftoolProcess;
@@ -42,7 +45,8 @@ async function extractMetadata(buffer, url) {
   let et = null;
 
   try {
-    console.log('Initializing ExifTool...');
+    // Initialize ExifTool first
+    console.log('Getting ExifTool instance...');
     et = await getExiftool();
 
     console.log('Creating temporary file...');
@@ -51,24 +55,30 @@ async function extractMetadata(buffer, url) {
     await writeFile(tempFilePath, buffer);
     console.log('Temporary file created at:', tempFilePath);
 
-    // Increase timeout for ExifTool operation
-    const exifToolTimeout = 45000; // 45 seconds
+    // Reduce timeout and add progress logging
+    const exifToolTimeout = 25000; // 25 seconds
     console.log('Starting metadata extraction with timeout:', exifToolTimeout);
 
-    const metadataPromise = et.read(tempFilePath).catch(error => {
-      console.error('ExifTool read error:', error);
-      throw error;
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        console.error('ExifTool operation timeout reached:', exifToolTimeout);
+        reject(new Error(`ExifTool operation timed out after ${exifToolTimeout / 1000} seconds`));
+      }, exifToolTimeout);
     });
 
-    const metadata = await Promise.race([
-      metadataPromise,
-      new Promise((_, reject) =>
-        setTimeout(() => {
-          console.error('ExifTool operation timeout reached:', exifToolTimeout);
-          reject(new Error(`ExifTool operation timed out after ${exifToolTimeout / 1000} seconds`));
-        }, exifToolTimeout)
-      )
-    ]);
+    const metadataPromise = et.read(tempFilePath)
+      .then(result => {
+        clearTimeout(timeoutId);
+        return result;
+      })
+      .catch(error => {
+        clearTimeout(timeoutId);
+        console.error('ExifTool read error:', error);
+        throw error;
+      });
+
+    const metadata = await Promise.race([metadataPromise, timeoutPromise]);
 
     if (!metadata) {
       throw new Error('No metadata extracted from image');
@@ -556,9 +566,9 @@ const handler = async (req, res) => {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    // Increase overall timeout to 55 seconds
+    // Adjust timeouts
     const requestTimeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timed out after 55 seconds')), 55000);
+      setTimeout(() => reject(new Error('Request timed out after 30 seconds')), 30000);
     });
 
     const processRequest = async () => {
@@ -568,7 +578,7 @@ const handler = async (req, res) => {
       }
 
       const imageResponse = await fetch(url, {
-        timeout: 15000, // Increase fetch timeout to 15 seconds
+        timeout: 8000, // 8 seconds for fetch
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }
@@ -626,10 +636,10 @@ module.exports = {
   config: {
     api: {
       bodyParser: {
-        sizeLimit: '4mb',
+        sizeLimit: '2mb', // Reduce size limit
       },
       responseLimit: false,
-      maxDuration: 60
+      maxDuration: 30 // Reduce to 30 seconds
     }
   }
 };
