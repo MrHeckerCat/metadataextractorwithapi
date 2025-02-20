@@ -49,13 +49,19 @@ async function extractMetadata(buffer, url) {
     blobUrl = tempUrl;
     console.log('File uploaded to:', blobUrl);
 
+    // Download the blob
+    const blobResponse = await fetch(blobUrl);
+    if (!blobResponse.ok) {
+      throw new Error('Failed to download blob');
+    }
+    const blobBuffer = Buffer.from(await blobResponse.arrayBuffer());
+
     // ExifTool options
     const exiftoolOptions = [
       '-fast',
       '-fast2',
       '-json',
       '-charset', 'filename=utf8',
-      '-http',
       '-ignoreMinorErrors',
       '-FileSize',
       '-ImageSize',
@@ -68,8 +74,8 @@ async function extractMetadata(buffer, url) {
       '-GPS:all'
     ];
 
-    console.log('Starting metadata extraction from URL:', blobUrl);
-    const metadata = await exiftoolProcess.readUrl(blobUrl, exiftoolOptions);
+    console.log('Starting metadata extraction...');
+    const metadata = await exiftoolProcess.read(blobBuffer, exiftoolOptions);
     console.log('Raw metadata:', metadata);
 
     const metadataObject = {
