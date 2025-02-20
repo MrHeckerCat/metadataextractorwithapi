@@ -24,60 +24,19 @@ async function extractMetadata(buffer, url) {
   try {
     console.log('Starting metadata extraction...');
     const tags = await ExifReader.load(buffer);
-    console.log('Tags loaded, structure:', Object.keys(tags));
 
-    // Helper function to get tag info
-    const getTagInfo = (section, key) => {
-      try {
-        if (!section || !section[key]) return null;
-        const tag = section[key];
-        return {
-          id: tag.id,
-          value: tag.value,
-          description: tag.description,
-          rawValue: Array.isArray(tag.value) ? tag.value : [tag.value]
-        };
-      } catch (e) {
-        console.warn(`Error getting tag info for ${key}:`, e);
-        return null;
+    // Add basic file info
+    const metadata = {
+      ...tags,
+      file: {
+        ...tags.file,
+        Url: { value: url, description: url },
+        FileName: { value: path.basename(url), description: path.basename(url) },
+        FileSize: { value: buffer.length, description: `${buffer.length} bytes` }
       }
     };
 
-    // Process each section
-    const processSection = (section, keys) => {
-      const result = {};
-      if (!section) return result;
-
-      // Get all keys from the section if none provided
-      const tagsToProcess = keys || Object.keys(section);
-
-      for (const key of tagsToProcess) {
-        const tagInfo = getTagInfo(section, key);
-        if (tagInfo) {
-          result[key] = tagInfo;
-        }
-      }
-      return result;
-    };
-
-    return {
-      File: {
-        Url: url,
-        FileName: path.basename(url),
-        FileSize: buffer.length,
-        ...processSection(tags.file, [
-          'Bits Per Sample',
-          'Image Height',
-          'Image Width',
-          'Color Components',
-          'Subsampling',
-          'FileType'
-        ])
-      },
-      EXIF: processSection(tags.exif),
-      IPTC: processSection(tags.iptc),
-      XMP: processSection(tags.xmp)
-    };
+    return metadata;
 
   } catch (error) {
     console.error('Metadata extraction error:', error);

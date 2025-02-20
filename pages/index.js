@@ -13,54 +13,47 @@ const FeedbackMessage = () => {
 };
 
 const MetadataDisplay = ({ metadata }) => {
-  const formatValue = (tagInfo) => {
-    if (!tagInfo) return "N/A";
-    return {
-      description: tagInfo.description || "N/A",
-      value: Array.isArray(tagInfo.value) ?
-        tagInfo.value.join(', ') :
-        String(tagInfo.value),
-      id: tagInfo.id || "N/A",
-      rawValue: tagInfo.rawValue || []
-    };
-  };
-
-  const renderTagValue = (tagInfo) => {
-    if (!tagInfo) return null;
-    const formatted = formatValue(tagInfo);
-
+  const renderValue = (value) => {
+    if (!value) return null;
     return (
       <div className={styles.tagInfo}>
-        <div className={styles.tagDescription}>
-          {formatted.description}
-        </div>
-        {formatted.id && (
-          <div className={styles.tagId}>
-            ID: {formatted.id}
+        {value.description && (
+          <div className={styles.tagDescription}>
+            {value.description}
           </div>
         )}
-        <div className={styles.tagValue}>
-          Raw: {JSON.stringify(formatted.rawValue)}
-        </div>
+        {value.id && (
+          <div className={styles.tagId}>
+            ID: {value.id}
+          </div>
+        )}
+        {value.value && (
+          <div className={styles.tagValue}>
+            Raw: {Array.isArray(value.value) ? JSON.stringify(value.value) : value.value}
+          </div>
+        )}
       </div>
     );
   };
 
   return (
     <div className={styles.metadataContainer}>
-      {Object.entries(metadata).map(([section, data]) => (
-        <div key={section} className={styles.metadataSection}>
-          <h3>{section}</h3>
-          <div className={styles.metadataGrid}>
-            {Object.entries(data).map(([key, value]) => (
-              <div key={key} className={styles.metadataField}>
-                <span className={styles.fieldName}>{key}</span>
-                {renderTagValue(value)}
-              </div>
-            ))}
+      {Object.entries(metadata).map(([section, data]) => {
+        if (section === '_raw') return null; // Skip raw XMP data
+        return (
+          <div key={section} className={styles.metadataSection}>
+            <h3>{section.toUpperCase()}</h3>
+            <div className={styles.metadataGrid}>
+              {Object.entries(data).map(([key, value]) => (
+                <div key={key} className={styles.metadataField}>
+                  <span className={styles.fieldName}>{key}</span>
+                  {renderValue(value)}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
