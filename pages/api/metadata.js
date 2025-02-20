@@ -54,12 +54,10 @@ async function verifyTurnstileToken(token) {
 async function extractMetadata(buffer, url) {
   try {
     console.log('Starting metadata extraction...');
-
-    // Load tags with expanded data
     const tags = await ExifReader.load(buffer, { expanded: true });
     console.log('Tags loaded successfully');
 
-    // Helper function to safely get values
+    // Helper functions
     const getValue = (obj, key, defaultValue = "N/A") => {
       try {
         if (!obj || !obj[key]) return defaultValue;
@@ -72,7 +70,6 @@ async function extractMetadata(buffer, url) {
       }
     };
 
-    // Helper function for numeric values
     const getNumValue = (obj, key, defaultValue = 0) => {
       try {
         const value = getValue(obj, key, null);
@@ -84,8 +81,7 @@ async function extractMetadata(buffer, url) {
       }
     };
 
-    // Create metadata object
-    const metadataObject = {
+    return {
       File: {
         Url: url,
         FileName: path.basename(url),
@@ -126,10 +122,6 @@ async function extractMetadata(buffer, url) {
         UsageTerms: getValue(tags.xmp, 'UsageTerms')
       }
     };
-
-    console.log('Metadata extraction completed');
-    return metadataObject;
-
   } catch (error) {
     console.error('Metadata extraction error:', error);
     throw error;
@@ -170,7 +162,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid CAPTCHA' });
     }
 
-    // Fetch image with timeout
+    // Fetch image
     const imageResponse = await fetch(url, {
       timeout: 5000,
       headers: {
@@ -191,8 +183,7 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('API error:', error);
-    const isTimeout = error.message.includes('timeout');
-    return res.status(isTimeout ? 408 : 500).json({
+    return res.status(500).json({
       error: 'Request failed',
       details: error.message
     });
