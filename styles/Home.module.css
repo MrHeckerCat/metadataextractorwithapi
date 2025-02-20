@@ -199,3 +199,78 @@
         width: 100%;
     }
 }
+
+.metadataContainer {
+  width: 100%;
+  max-width: 800px;
+  margin: 20px auto;
+}
+
+.metadataSection {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.metadataSection h3 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 10px;
+}
+
+.metadataGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 15px;
+}
+
+.metadataField {
+  display: flex;
+  flex-direction: column;
+  background: white;
+  padding: 12px;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.fieldName {
+  color: #6c757d;
+  font-size: 0.9em;
+  margin-bottom: 4px;
+}
+
+.fieldValue {
+  color: #212529;
+  word-break: break-word;
+}
+
+.metadataActions {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.toggleButton {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.toggleButton:hover {
+  background: #5a6268;
+}
+
+.rawData {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 0.9em;
+  margin-top: 20px;
+}

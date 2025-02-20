@@ -12,6 +12,55 @@ const FeedbackMessage = () => {
   );
 };
 
+const MetadataDisplay = ({ metadata }) => {
+  const sections = {
+    File: {
+      title: "File Information",
+      fields: ["FileName", "FileSize", "ImageWidth", "ImageHeight", "FileType", "BitsPerSample", "ColorComponents", "Subsampling"]
+    },
+    EXIF: {
+      title: "EXIF Data",
+      fields: ["ImageDescription", "Artist", "Copyright", "XResolution", "YResolution", "ResolutionUnit", "YCbCrPositioning"]
+    },
+    IPTC: {
+      title: "IPTC Data",
+      fields: ["SpecialInstructions", "DateCreated", "TimeCreated", "Byline", "Headline", "Credit", "CopyrightNotice", "Caption"]
+    },
+    XMP: {
+      title: "XMP Data",
+      fields: ["Creator", "Description", "Rights", "Credit", "DateCreated", "Headline", "Instructions", "CopyrightOwner", "ImageCreator", "Licensor", "UsageTerms", "WebStatement"]
+    }
+  };
+
+  const formatValue = (value) => {
+    if (value === undefined || value === null) return "N/A";
+    if (typeof value === "number") return value.toString();
+    return value;
+  };
+
+  return (
+    <div className={styles.metadataContainer}>
+      {Object.entries(sections).map(([section, { title, fields }]) => (
+        <div key={section} className={styles.metadataSection}>
+          <h3>{title}</h3>
+          <div className={styles.metadataGrid}>
+            {fields.map(field => {
+              const value = metadata[section]?.[field];
+              if (!value || value === "N/A") return null;
+              return (
+                <div key={field} className={styles.metadataField}>
+                  <span className={styles.fieldName}>{field}:</span>
+                  <span className={styles.fieldValue}>{formatValue(value)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export default function Home() {
   const [metadata, setMetadata] = useState(null);
   const [error, setError] = useState(null);
@@ -20,7 +69,8 @@ export default function Home() {
   const [copySuccess, setCopySuccess] = useState('');
   const [turnstileToken, setTurnstileToken] = useState(null);
   const [showFeedback, setShowFeedback] = useState(false);
-  
+  const [showRawData, setShowRawData] = useState(false);
+
   useEffect(() => {
     window.onTurnstileSuccess = (token) => {
       setTurnstileToken(token);
@@ -89,7 +139,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           url,
           turnstileToken
         }),
@@ -171,7 +221,7 @@ export default function Home() {
           />
           <p className={styles.orText}>OR</p>
           <input type="file" name="file" className={styles.input} />
-          
+
           <div
             id="turnstile-widget"
             className="cf-turnstile"
@@ -187,14 +237,27 @@ export default function Home() {
 
         {loading && <p>Loading...</p>}
         {error && <p className={styles.error}>{error}</p>}
-        
+
         {metadata && (
           <div className={styles.metadata}>
-            <h2>Metadata:</h2>
-            <pre>{JSON.stringify(metadata, null, 2)}</pre>
-            <button onClick={copyMetadata} className={styles.copyButton}>
-              {copySuccess || 'Copy Metadata'}
-            </button>
+            <h2>Metadata Results</h2>
+            <MetadataDisplay metadata={metadata} />
+            <div className={styles.metadataActions}>
+              <button onClick={copyMetadata} className={styles.copyButton}>
+                {copySuccess || 'Copy Raw Data'}
+              </button>
+              <button
+                onClick={() => setShowRawData(!showRawData)}
+                className={styles.toggleButton}
+              >
+                {showRawData ? 'Show Formatted View' : 'Show Raw Data'}
+              </button>
+            </div>
+            {showRawData && (
+              <pre className={styles.rawData}>
+                {JSON.stringify(metadata, null, 2)}
+              </pre>
+            )}
             {showFeedback && <FeedbackMessage />}
           </div>
         )}
@@ -203,13 +266,13 @@ export default function Home() {
           <h2>Frequently Asked Questions</h2>
           {faqItems.map((item, index) => (
             <div key={index} className={styles.faqItem}>
-              <div 
-                className={styles.faqQuestion} 
+              <div
+                className={styles.faqQuestion}
                 onClick={() => toggleFaq(index)}
               >
                 <h3>{item.question}</h3>
               </div>
-              <div 
+              <div
                 className={`${styles.faqAnswer} ${openFaq === index ? styles.open : ''}`}
               >
                 {item.answer}
