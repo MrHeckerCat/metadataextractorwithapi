@@ -1,5 +1,5 @@
 const path = require('path');
-const { exiftool } = require('exiftool-vendored');
+const { ExifTool } = require('exiftool-vendored');
 const { v4: uuidv4 } = require('uuid');
 const { put, del } = require('@vercel/blob');
 const probe = require('probe-image-size');
@@ -7,7 +7,17 @@ const iptc = require('node-iptc');
 const os = require('os');
 const { writeFile, unlink } = require('fs/promises');
 
-// Initialize ExifTool with specific options
+// Initialize ExifTool with custom settings
+const exiftool = new ExifTool({
+  taskTimeoutMillis: 20000, // 20 seconds timeout
+  maxTasksPerProcess: 1,    // Limit concurrent tasks
+  minDelayBetweenSpawns: 100, // Add delay between spawns
+  maxProcs: 1,             // Limit to single process
+  enableHeapUsageLimit: true, // Enable memory limits
+  maxHeapUsagePercent: 50  // Limit memory usage
+});
+
+// ExifTool options for faster processing
 const exiftoolOptions = [
   '-json',
   '-fast',
@@ -50,13 +60,9 @@ async function extractMetadata(buffer, url) {
     tempFilePath = path.join('/tmp', tempFileName);
     await writeFile(tempFilePath, buffer);
 
-    // Extract metadata with timeout
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Metadata extraction timeout')), 8000);
-    });
-
-    const metadataPromise = exiftool.read(tempFilePath, exiftoolOptions);
-    const metadata = await Promise.race([metadataPromise, timeoutPromise]);
+    console.log('Starting metadata extraction...');
+    const metadata = await exiftool.read(tempFilePath, exiftoolOptions);
+    console.log('Metadata extracted successfully');
 
     // Create metadata object
     const metadataObject = {
@@ -102,6 +108,7 @@ async function extractMetadata(buffer, url) {
     if (tempFilePath) {
       try {
         await unlink(tempFilePath);
+        console.log('Temporary file cleaned up');
       } catch (error) {
         console.error('Cleanup error:', error);
       }
@@ -145,9 +152,6 @@ const handler = async (req, res) => {
     const buffer = Buffer.from(await imageResponse.arrayBuffer());
     const metadata = await extractMetadata(buffer, url);
 
-    // End ExifTool process
-    await exiftool.end();
-
     return res.status(200).json(metadata);
 
   } catch (error) {
@@ -161,6 +165,7 @@ const handler = async (req, res) => {
     // Ensure ExifTool process is ended
     try {
       await exiftool.end();
+      console.log('ExifTool process ended');
     } catch (error) {
       console.error('Error ending ExifTool:', error);
     }
@@ -177,7 +182,7 @@ module.exports = {
         sizeLimit: '1mb',
       },
       responseLimit: false,
-      maxDuration: 10
+      maxDuration: 25 // Increased to match ExifTool timeout
     }
   }
 };
