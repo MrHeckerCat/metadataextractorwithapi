@@ -1,14 +1,19 @@
-import { exiftool } from 'exiftool-vendored';
-import path from 'path';
-import { writeFile, unlink } from 'fs/promises';
-import os from 'os';
-import { v4 as uuidv4 } from 'uuid';
+const { exiftool } = require('exiftool-vendored');
+const path = require('path');
+const { writeFile, unlink, readFile } = require('fs/promises');
+const os = require('os');
+const { v4: uuidv4 } = require('uuid');
+const icc = require('icc');
+const jpeg = require('jpeg-js');
+const ExifReader = require('exifreader');
 
 let exiftoolProcess = null;
 
 async function getExiftool() {
   if (!exiftoolProcess) {
+    console.log('Initializing ExifTool...');
     exiftoolProcess = exiftool;
+    console.log('ExifTool initialized successfully');
   }
   return exiftoolProcess;
 }
@@ -35,351 +40,468 @@ async function verifyTurnstileToken(token) {
 async function extractMetadata(buffer, url) {
   let tempFilePath = null;
   const et = await getExiftool();
-  
+
   try {
+    console.log('Creating temporary file...');
     const tempFileName = `temp-${uuidv4()}${path.extname(url)}`;
     tempFilePath = path.join(os.tmpdir(), tempFileName);
     await writeFile(tempFilePath, buffer);
+    console.log('Temporary file created at:', tempFilePath);
 
-    // Increase timeout to 2 minutes (120000ms)
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Metadata extraction timed out after 120 seconds')), 120000);
-    });
+    console.log('Starting metadata extraction...');
+    const metadata = await et.read(tempFilePath);
+    console.log('Metadata extraction completed');
 
-    // Add progress tracking
-    const metadataPromise = et.read(tempFilePath).catch(err => {
-      throw new Error(`ExifTool error: ${err.message}`);
-    });
+    // Helper function to get value with N/A default
+    const getValue = (obj, key, defaultValue = "N/A") => {
+      return obj && obj[key] !== undefined ? obj[key] : defaultValue;
+    };
 
-    const metadata = await Promise.race([metadataPromise, timeoutPromise]);
+    // Helper function for numeric values
+    const getNumValue = (obj, key, defaultValue = 0) => {
+      return obj && obj[key] !== undefined ? obj[key] : defaultValue;
+    };
 
-    // Add validation check
-    if (!metadata) {
-      throw new Error('No metadata extracted from image');
-    }
+    const logAllMetadataFields = (metadata) => {
+      console.log('All available metadata fields:');
+      Object.keys(metadata).sort().forEach(key => {
+        console.log(`${key}: ${typeof metadata[key]} = ${metadata[key]}`);
+      });
+    };
 
-    // Create full metadata object with all fields
+    console.log('Starting detailed metadata analysis...');
+    logAllMetadataFields(metadata);
+
     const metadataObject = {
       File: {
-        Url: url,
-        FileName: path.basename(url),
-        FileSize: metadata.FileSize || 0,
-        FileModifyDate: metadata.FileModifyDate || '',
-        FileAccessDate: metadata.FileAccessDate || '',
-        FileInodeChangeDate: metadata.FileInodeChangeDate || '',
-        FileType: metadata.FileType || '',
-        FileTypeExtension: metadata.FileTypeExtension || '',
-        MIMEType: metadata.MIMEType || '',
-        ExifByteOrder: metadata.ExifByteOrder || '',
-        CurrentIPTCDigest: metadata.CurrentIPTCDigest || '',
-        ImageWidth: metadata.ImageWidth || 0,
-        ImageHeight: metadata.ImageHeight || 0,
-        EncodingProcess: metadata.EncodingProcess || '',
-        BitsPerSample: metadata.BitsPerSample || 0,
-        ColorComponents: metadata.ColorComponents || 0,
-        YCbCrSubSampling: metadata.YCbCrSubSampling || ''
+        Url: url || "N/A",
+        FileName: path.basename(url) || "N/A",
+        FileSize: getNumValue(metadata, 'FileSize'),
+        FileModifyDate: getValue(metadata, 'FileModifyDate'),
+        FileAccessDate: getValue(metadata, 'FileAccessDate'),
+        FileInodeChangeDate: getValue(metadata, 'FileInodeChangeDate'),
+        FileType: getValue(metadata, 'FileType'),
+        FileTypeExtension: getValue(metadata, 'FileTypeExtension'),
+        MIMEType: getValue(metadata, 'MIMEType'),
+        ExifByteOrder: getValue(metadata, 'ExifByteOrder'),
+        CurrentIPTCDigest: getValue(metadata, 'CurrentIPTCDigest'),
+        ImageWidth: getNumValue(metadata, 'ImageWidth'),
+        ImageHeight: getNumValue(metadata, 'ImageHeight'),
+        EncodingProcess: getValue(metadata, 'EncodingProcess'),
+        BitsPerSample: getNumValue(metadata, 'BitsPerSample'),
+        ColorComponents: getNumValue(metadata, 'ColorComponents'),
+        YCbCrSubSampling: getValue(metadata, 'YCbCrSubSampling')
       },
       EXIF: {
-        Make: metadata.Make || '',
-        Model: metadata.Model || '',
-        Orientation: metadata.Orientation || '',
-        XResolution: metadata.XResolution || 0,
-        YResolution: metadata.YResolution || 0,
-        ResolutionUnit: metadata.ResolutionUnit || '',
-        Software: metadata.Software || '',
-        ModifyDate: metadata.ModifyDate || '',
-        Artist: metadata.Artist || '',
-        Copyright: metadata.Copyright || '',
-        ExposureTime: metadata.ExposureTime || '',
-        FNumber: metadata.FNumber || 0,
-        ExposureProgram: metadata.ExposureProgram || '',
-        ISO: metadata.ISO || 0,
-        ExifVersion: metadata.ExifVersion || '',
-        DateTimeOriginal: metadata.DateTimeOriginal || '',
-        CreateDate: metadata.CreateDate || '',
-        ShutterSpeedValue: metadata.ShutterSpeedValue || '',
-        ApertureValue: metadata.ApertureValue || 0,
-        ExposureCompensation: metadata.ExposureCompensation || 0,
-        MaxApertureValue: metadata.MaxApertureValue || 0,
-        MeteringMode: metadata.MeteringMode || '',
-        LightSource: metadata.LightSource || '',
-        Flash: metadata.Flash || '',
-        FocalLength: metadata.FocalLength || '',
-        ColorSpace: metadata.ColorSpace || '',
-        ExifImageWidth: metadata.ExifImageWidth || 0,
-        ExifImageHeight: metadata.ExifImageHeight || 0,
-        FileSource: metadata.FileSource || '',
-        SceneType: metadata.SceneType || '',
-        CustomRendered: metadata.CustomRendered || '',
-        ExposureMode: metadata.ExposureMode || '',
-        WhiteBalance: metadata.WhiteBalance || '',
-        SceneCaptureType: metadata.SceneCaptureType || '',
-        GainControl: metadata.GainControl || '',
-        Contrast: metadata.Contrast || '',
-        Saturation: metadata.Saturation || '',
-        Sharpness: metadata.Sharpness || '',
-        SubjectDistanceRange: metadata.SubjectDistanceRange || '',
-        SerialNumber: metadata.SerialNumber || 0,
-        LensMake: metadata.LensMake || '',
-        LensModel: metadata.LensModel || '',
-        GPSVersionID: metadata.GPSVersionID || '',
-        GPSLatitudeRef: metadata.GPSLatitudeRef || '',
-        GPSLatitude: metadata.GPSLatitude || '',
-        GPSLongitudeRef: metadata.GPSLongitudeRef || '',
-        GPSLongitude: metadata.GPSLongitude || '',
-        GPSAltitudeRef: metadata.GPSAltitudeRef || '',
-        GPSAltitude: metadata.GPSAltitude || '',
-        Compression: metadata.Compression || '',
-        ThumbnailOffset: metadata.ThumbnailOffset || 0,
-        ThumbnailLength: metadata.ThumbnailLength || 0,
-        ThumbnailImage: metadata.ThumbnailImage || ''
-      },
-      XMP: {
-        XMPToolkit: metadata.XMPToolkit || '',
-        ModifyDate: metadata.XMP?.ModifyDate || '',
-        CreateDate: metadata.XMP?.CreateDate || '',
-        CreatorTool: metadata.XMP?.CreatorTool || '',
-        Rating: metadata.XMP?.Rating || 0,
-        MetadataDate: metadata.XMP?.MetadataDate || '',
-        Format: metadata.XMP?.Format || '',
-        Latitude: metadata.XMP?.Latitude || '',
-        Longitude: metadata.XMP?.Longitude || '',
-        AbsoluteAltitude: metadata.XMP?.AbsoluteAltitude || '',
-        RelativeAltitude: metadata.XMP?.RelativeAltitude || '',
-        GimbalRollDegree: metadata.XMP?.GimbalRollDegree || '',
-        GimbalYawDegree: metadata.XMP?.GimbalYawDegree || 0,
-        GimbalPitchDegree: metadata.XMP?.GimbalPitchDegree || '',
-        FlightRollDegree: metadata.XMP?.FlightRollDegree || 0,
-        FlightYawDegree: metadata.XMP?.FlightYawDegree || 0,
-        FlightPitchDegree: metadata.XMP?.FlightPitchDegree || '',
-        CamReverse: metadata.XMP?.CamReverse || 0,
-        GimbalReverse: metadata.XMP?.GimbalReverse || 0,
-        SelfData: metadata.XMP?.SelfData || '',
-        SerialNumber: metadata.XMP?.SerialNumber || 0,
-        Lens: metadata.XMP?.Lens || '',
-        DistortionCorrectionAlreadyApplied: metadata.XMP?.DistortionCorrectionAlreadyApplied || false,
-        LateralChromaticAberrationCorrectionAlreadyApplied: metadata.XMP?.LateralChromaticAberrationCorrectionAlreadyApplied || false,
-        DateCreated: metadata.XMP?.DateCreated || '',
-        DocumentID: metadata.XMP?.DocumentID || '',
-        OriginalDocumentID: metadata.XMP?.OriginalDocumentID || '',
-        InstanceID: metadata.XMP?.InstanceID || '',
-        Marked: metadata.XMP?.Marked || false,
-        RawFileName: metadata.XMP?.RawFileName || '',
-        Version: metadata.XMP?.Version || 0,
-        ProcessVersion: metadata.XMP?.ProcessVersion || 0,
-        WhiteBalance: metadata.XMP?.WhiteBalance || '',
-        ColorTemperature: metadata.XMP?.ColorTemperature || 0,
-        Tint: metadata.XMP?.Tint || 0,
-        Saturation: metadata.XMP?.Saturation || '',
-        Sharpness: metadata.XMP?.Sharpness || 0,
-        LuminanceSmoothing: metadata.XMP?.LuminanceSmoothing || 0,
-        ColorNoiseReduction: metadata.XMP?.ColorNoiseReduction || 0,
-        VignetteAmount: metadata.XMP?.VignetteAmount || 0,
-        ShadowTint: metadata.XMP?.ShadowTint || 0,
-        RedHue: metadata.XMP?.RedHue || 0,
-        RedSaturation: metadata.XMP?.RedSaturation || 0,
-        GreenHue: metadata.XMP?.GreenHue || 0,
-        GreenSaturation: metadata.XMP?.GreenSaturation || 0,
-        BlueHue: metadata.XMP?.BlueHue || 0,
-        BlueSaturation: metadata.XMP?.BlueSaturation || 0,
-        Vibrance: metadata.XMP?.Vibrance || '',
-        HueAdjustmentRed: metadata.XMP?.HueAdjustmentRed || 0,
-        HueAdjustmentOrange: metadata.XMP?.HueAdjustmentOrange || 0,
-        HueAdjustmentYellow: metadata.XMP?.HueAdjustmentYellow || 0,
-        HueAdjustmentGreen: metadata.XMP?.HueAdjustmentGreen || 0,
-        HueAdjustmentAqua: metadata.XMP?.HueAdjustmentAqua || 0,
-        HueAdjustmentBlue: metadata.XMP?.HueAdjustmentBlue || 0,
-        HueAdjustmentPurple: metadata.XMP?.HueAdjustmentPurple || 0,
-        HueAdjustmentMagenta: metadata.XMP?.HueAdjustmentMagenta || 0,
-        SaturationAdjustmentRed: metadata.XMP?.SaturationAdjustmentRed || 0,
-        SaturationAdjustmentOrange: metadata.XMP?.SaturationAdjustmentOrange || 0,
-        SaturationAdjustmentYellow: metadata.XMP?.SaturationAdjustmentYellow || 0,
-        SaturationAdjustmentGreen: metadata.XMP?.SaturationAdjustmentGreen || 0,
-        SaturationAdjustmentAqua: metadata.XMP?.SaturationAdjustmentAqua || 0,
-        SaturationAdjustmentBlue: metadata.XMP?.SaturationAdjustmentBlue || 0,
-        SaturationAdjustmentPurple: metadata.XMP?.SaturationAdjustmentPurple || 0,
-        SaturationAdjustmentMagenta: metadata.XMP?.SaturationAdjustmentMagenta || 0,
-        LuminanceAdjustmentRed: metadata.XMP?.LuminanceAdjustmentRed || 0,
-        LuminanceAdjustmentOrange: metadata.XMP?.LuminanceAdjustmentOrange || 0,
-        LuminanceAdjustmentYellow: metadata.XMP?.LuminanceAdjustmentYellow || 0,
-        LuminanceAdjustmentGreen: metadata.XMP?.LuminanceAdjustmentGreen || 0,
-        LuminanceAdjustmentAqua: metadata.XMP?.LuminanceAdjustmentAqua || 0,
-        LuminanceAdjustmentBlue: metadata.XMP?.LuminanceAdjustmentBlue || 0,
-        LuminanceAdjustmentPurple: metadata.XMP?.LuminanceAdjustmentPurple || 0,
-        LuminanceAdjustmentMagenta: metadata.XMP?.LuminanceAdjustmentMagenta || 0,
-        SplitToningShadowHue: metadata.XMP?.SplitToningShadowHue || 0,
-        SplitToningShadowSaturation: metadata.XMP?.SplitToningShadowSaturation || 0,
-        SplitToningHighlightHue: metadata.XMP?.SplitToningHighlightHue || 0,
-        SplitToningHighlightSaturation: metadata.XMP?.SplitToningHighlightSaturation || 0,
-        SplitToningBalance: metadata.XMP?.SplitToningBalance || 0,
-        ParametricShadows: metadata.XMP?.ParametricShadows || 0,
-        ParametricDarks: metadata.XMP?.ParametricDarks || 0,
-        ParametricLights: metadata.XMP?.ParametricLights || 0,
-        ParametricHighlights: metadata.XMP?.ParametricHighlights || 0,
-        ParametricShadowSplit: metadata.XMP?.ParametricShadowSplit || 0,
-        ParametricMidtoneSplit: metadata.XMP?.ParametricMidtoneSplit || 0,
-        ParametricHighlightSplit: metadata.XMP?.ParametricHighlightSplit || 0,
-        SharpenRadius: metadata.XMP?.SharpenRadius || '',
-        SharpenDetail: metadata.XMP?.SharpenDetail || 0,
-        SharpenEdgeMasking: metadata.XMP?.SharpenEdgeMasking || 0,
-        PostCropVignetteAmount: metadata.XMP?.PostCropVignetteAmount || 0,
-        GrainAmount: metadata.XMP?.GrainAmount || 0,
-        LuminanceNoiseReductionDetail: metadata.XMP?.LuminanceNoiseReductionDetail || 0,
-        ColorNoiseReductionDetail: metadata.XMP?.ColorNoiseReductionDetail || 0,
-        LuminanceNoiseReductionContrast: metadata.XMP?.LuminanceNoiseReductionContrast || 0,
-        ColorNoiseReductionSmoothness: metadata.XMP?.ColorNoiseReductionSmoothness || 0,
-        LensProfileEnable: metadata.XMP?.LensProfileEnable || 0,
-        LensManualDistortionAmount: metadata.XMP?.LensManualDistortionAmount || 0,
-        PerspectiveVertical: metadata.XMP?.PerspectiveVertical || 0,
-        PerspectiveHorizontal: metadata.XMP?.PerspectiveHorizontal || 0,
-        PerspectiveRotate: metadata.XMP?.PerspectiveRotate || 0,
-        PerspectiveScale: metadata.XMP?.PerspectiveScale || 0,
-        PerspectiveAspect: metadata.XMP?.PerspectiveAspect || 0,
-        PerspectiveUpright: metadata.XMP?.PerspectiveUpright || 0,
-        PerspectiveX: metadata.XMP?.PerspectiveX || 0,
-        PerspectiveY: metadata.XMP?.PerspectiveY || 0,
-        AutoLateralCA: metadata.XMP?.AutoLateralCA || 0,
-        Exposure2012: metadata.XMP?.Exposure2012 || 0,
-        Contrast2012: metadata.XMP?.Contrast2012 || '',
-        Highlights2012: metadata.XMP?.Highlights2012 || 0,
-        Shadows2012: metadata.XMP?.Shadows2012 || '',
-        Whites2012: metadata.XMP?.Whites2012 || '',
-        Blacks2012: metadata.XMP?.Blacks2012 || 0,
-        Clarity2012: metadata.XMP?.Clarity2012 || '',
-        DefringePurpleAmount: metadata.XMP?.DefringePurpleAmount || 0,
-        DefringePurpleHueLo: metadata.XMP?.DefringePurpleHueLo || 0,
-        DefringePurpleHueHi: metadata.XMP?.DefringePurpleHueHi || 0,
-        DefringeGreenAmount: metadata.XMP?.DefringeGreenAmount || 0,
-        DefringeGreenHueLo: metadata.XMP?.DefringeGreenHueLo || 0,
-        DefringeGreenHueHi: metadata.XMP?.DefringeGreenHueHi || 0,
-        Dehaze: metadata.XMP?.Dehaze || '',
-        ToneCurveName: metadata.XMP?.ToneCurveName || '',
-        ToneCurveName2012: metadata.XMP?.ToneCurveName2012 || '',
-        CameraProfile: metadata.XMP?.CameraProfile || '',
-        CameraProfileDigest: metadata.XMP?.CameraProfileDigest || '',
-        LensProfileSetup: metadata.XMP?.LensProfileSetup || '',
-        UprightVersion: metadata.XMP?.UprightVersion || 0,
-        UprightCenterMode: metadata.XMP?.UprightCenterMode || 0,
-        UprightCenterNormX: metadata.XMP?.UprightCenterNormX || 0,
-        UprightCenterNormY: metadata.XMP?.UprightCenterNormY || 0,
-        UprightFocalMode: metadata.XMP?.UprightFocalMode || 0,
-        UprightFocalLength35mm: metadata.XMP?.UprightFocalLength35mm || 0,
-        UprightPreview: metadata.XMP?.UprightPreview || false,
-        UprightTransformCount: metadata.XMP?.UprightTransformCount || 0,
-        UprightFourSegmentsCount: metadata.XMP?.UprightFourSegmentsCount || 0,
-        HasSettings: metadata.XMP?.HasSettings || false,
-        HasCrop: metadata.XMP?.HasCrop || false,
-        AlreadyApplied: metadata.XMP?.AlreadyApplied || false,
-        Creator: metadata.XMP?.Creator || '',
-        CreatorWorkEmail: metadata.XMP?.CreatorWorkEmail || '',
-        CreatorWorkURL: metadata.XMP?.CreatorWorkURL || ''
-      },
-      Photoshop: {
-        XResolution: metadata.Photoshop?.XResolution || 0,
-        DisplayedUnitsX: metadata.Photoshop?.DisplayedUnitsX || '',
-        YResolution: metadata.Photoshop?.YResolution || 0,
-        DisplayedUnitsY: metadata.Photoshop?.DisplayedUnitsY || '',
-        PhotoshopQuality: metadata.Photoshop?.PhotoshopQuality || 0,
-        PhotoshopFormat: metadata.Photoshop?.PhotoshopFormat || '',
-        ProgressiveScans: metadata.Photoshop?.ProgressiveScans || '',
-        CopyrightFlag: metadata.Photoshop?.CopyrightFlag || false,
-        GlobalAngle: metadata.Photoshop?.GlobalAngle || 0,
-        GlobalAltitude: metadata.Photoshop?.GlobalAltitude || 0,
-        PrintScale: metadata.Photoshop?.PrintScale || 0,
-        PixelAspectRatio: metadata.Photoshop?.PixelAspectRatio || 0
+        Make: getValue(metadata, 'Make'),
+        Model: getValue(metadata, 'Model'),
+        Orientation: getValue(metadata, 'Orientation'),
+        XResolution: getNumValue(metadata, 'XResolution'),
+        YResolution: getNumValue(metadata, 'YResolution'),
+        ResolutionUnit: getValue(metadata, 'ResolutionUnit'),
+        Software: getValue(metadata, 'Software'),
+        ModifyDate: getValue(metadata, 'ModifyDate'),
+        Artist: getValue(metadata, 'Artist'),
+        ExposureTime: getValue(metadata, 'ExposureTime'),
+        FNumber: getNumValue(metadata, 'FNumber'),
+        ExposureProgram: getValue(metadata, 'ExposureProgram'),
+        ISO: getNumValue(metadata, 'ISO'),
+        ExifVersion: getValue(metadata, 'ExifVersion'),
+        DateTimeOriginal: getValue(metadata, 'DateTimeOriginal'),
+        CreateDate: getValue(metadata, 'CreateDate'),
+        ShutterSpeedValue: getValue(metadata, 'ShutterSpeedValue'),
+        ApertureValue: getNumValue(metadata, 'ApertureValue'),
+        ExposureCompensation: getNumValue(metadata, 'ExposureCompensation'),
+        MaxApertureValue: getNumValue(metadata, 'MaxApertureValue'),
+        MeteringMode: getValue(metadata, 'MeteringMode'),
+        LightSource: getValue(metadata, 'LightSource'),
+        Flash: getValue(metadata, 'Flash'),
+        FocalLength: getValue(metadata, 'FocalLength'),
+        ColorSpace: getValue(metadata, 'ColorSpace'),
+        ExifImageWidth: getNumValue(metadata, 'ExifImageWidth'),
+        ExifImageHeight: getNumValue(metadata, 'ExifImageHeight'),
+        FileSource: getValue(metadata, 'FileSource'),
+        SceneType: getValue(metadata, 'SceneType'),
+        CustomRendered: getValue(metadata, 'CustomRendered'),
+        ExposureMode: getValue(metadata, 'ExposureMode'),
+        WhiteBalance: getValue(metadata, 'WhiteBalance'),
+        SceneCaptureType: getValue(metadata, 'SceneCaptureType'),
+        GainControl: getValue(metadata, 'GainControl'),
+        Contrast: getValue(metadata, 'Contrast'),
+        Saturation: getValue(metadata, 'Saturation'),
+        Sharpness: getValue(metadata, 'Sharpness'),
+        SubjectDistanceRange: getValue(metadata, 'SubjectDistanceRange'),
+        SerialNumber: getNumValue(metadata, 'SerialNumber'),
+        LensMake: getValue(metadata, 'LensMake'),
+        LensModel: getValue(metadata, 'LensModel'),
+        GPSVersionID: getValue(metadata, 'GPSVersionID'),
+        GPSLatitudeRef: getValue(metadata, 'GPSLatitudeRef'),
+        GPSLatitude: getValue(metadata, 'GPSLatitude'),
+        GPSLongitudeRef: getValue(metadata, 'GPSLongitudeRef'),
+        GPSLongitude: getValue(metadata, 'GPSLongitude'),
+        GPSAltitudeRef: getValue(metadata, 'GPSAltitudeRef'),
+        GPSAltitude: getValue(metadata, 'GPSAltitude'),
+        Compression: getValue(metadata, 'Compression'),
+        ThumbnailOffset: getNumValue(metadata, 'ThumbnailOffset'),
+        ThumbnailLength: getNumValue(metadata, 'ThumbnailLength'),
+        ThumbnailImage: getValue(metadata, 'ThumbnailImage'),
+        ImageUniqueID: getValue(metadata, 'ImageUniqueID'),
+        OffsetTime: getValue(metadata, 'OffsetTime'),
+        OffsetTimeOriginal: getValue(metadata, 'OffsetTimeOriginal'),
+        OffsetTimeDigitized: getValue(metadata, 'OffsetTimeDigitized'),
+        SubsecTime: getValue(metadata, 'SubsecTime'),
+        SubsecTimeOriginal: getValue(metadata, 'SubsecTimeOriginal'),
+        SubsecTimeDigitized: getValue(metadata, 'SubsecTimeDigitized'),
+        SensingMethod: getValue(metadata, 'SensingMethod'),
+        FocalLengthIn35mmFormat: getValue(metadata, 'FocalLengthIn35mmFormat'),
+        DeviceSettingDescription: getValue(metadata, 'DeviceSettingDescription'),
+        BodySerialNumber: getValue(metadata, 'BodySerialNumber'),
+        LensSpecification: getValue(metadata, 'LensSpecification'),
+        LensSerialNumber: getValue(metadata, 'LensSerialNumber'),
+        InteropIndex: getValue(metadata, 'InteropIndex'),
+        InteropVersion: getValue(metadata, 'InteropVersion'),
       },
       IPTC: {
-        CodedCharacterSet: metadata.IPTC?.CodedCharacterSet || '',
-        ApplicationRecordVersion: metadata.IPTC?.ApplicationRecordVersion || 0,
-        DateCreated: metadata.IPTC?.DateCreated || '',
-        TimeCreated: metadata.IPTC?.TimeCreated || '',
-        'By-line': metadata.IPTC?.['By-line'] || ''
+        SpecialInstructions: getValue(metadata, 'SpecialInstructions'),
+        DateCreated: getValue(metadata, 'DateCreated'),
+        TimeCreated: getValue(metadata, 'TimeCreated'),
+        'By-line': getValue(metadata, 'By-line'),
+        Headline: getValue(metadata, 'Headline'),
+        Credit: getValue(metadata, 'Credit'),
+        CopyrightNotice: getValue(metadata, 'CopyrightNotice'),
+        'Caption-Abstract': getValue(metadata, 'Caption-Abstract'),
+        ApplicationRecordVersion: getNumValue(metadata, 'ApplicationRecordVersion'),
+        ObjectName: getValue(metadata, 'ObjectName'),
+        Keywords: getValue(metadata, 'Keywords'),
+        Category: getValue(metadata, 'Category'),
+        SupplementalCategories: getValue(metadata, 'SupplementalCategories'),
+        Province: getValue(metadata, 'Province'),
+        Country: getValue(metadata, 'Country'),
+        OriginalTransmissionReference: getValue(metadata, 'OriginalTransmissionReference'),
+        Source: getValue(metadata, 'Source'),
+        Contact: getValue(metadata, 'Contact'),
+        Writer: getValue(metadata, 'Writer'),
+        Headline: getValue(metadata, 'Headline'),
+        Caption: getValue(metadata, 'Caption'),
+        Credit: getValue(metadata, 'Credit'),
+        Instructions: getValue(metadata, 'Instructions'),
+        DateSent: getValue(metadata, 'DateSent'),
+        Urgency: getValue(metadata, 'Urgency'),
+      },
+      XMP: {
+        XMPToolkit: getValue(metadata, 'XMPToolkit'),
+        ModifyDate: getValue(metadata, 'XMP:ModifyDate'),
+        CreateDate: getValue(metadata, 'XMP:CreateDate'),
+        CreatorTool: getValue(metadata, 'XMP:CreatorTool'),
+        Rating: getNumValue(metadata, 'XMP:Rating'),
+        MetadataDate: getValue(metadata, 'XMP:MetadataDate'),
+        Format: getValue(metadata, 'XMP:Format'),
+        Latitude: getValue(metadata, 'XMP:Latitude'),
+        Longitude: getValue(metadata, 'XMP:Longitude'),
+        AbsoluteAltitude: getValue(metadata, 'XMP:AbsoluteAltitude'),
+        RelativeAltitude: getValue(metadata, 'XMP:RelativeAltitude'),
+        GimbalRollDegree: getValue(metadata, 'XMP:GimbalRollDegree'),
+        GimbalYawDegree: getNumValue(metadata, 'XMP:GimbalYawDegree'),
+        GimbalPitchDegree: getValue(metadata, 'XMP:GimbalPitchDegree'),
+        FlightRollDegree: getNumValue(metadata, 'XMP:FlightRollDegree'),
+        FlightYawDegree: getNumValue(metadata, 'XMP:FlightYawDegree'),
+        FlightPitchDegree: getValue(metadata, 'XMP:FlightPitchDegree'),
+        CamReverse: getNumValue(metadata, 'XMP:CamReverse'),
+        GimbalReverse: getNumValue(metadata, 'XMP:GimbalReverse'),
+        SelfData: getValue(metadata, 'XMP:SelfData'),
+        SerialNumber: getNumValue(metadata, 'XMP:SerialNumber'),
+        Lens: getValue(metadata, 'XMP:Lens'),
+        DistortionCorrectionAlreadyApplied: metadata['XMP:DistortionCorrectionAlreadyApplied'] || false,
+        LateralChromaticAberrationCorrectionAlreadyApplied: metadata['XMP:LateralChromaticAberrationCorrectionAlreadyApplied'] || false,
+        DateCreated: getValue(metadata, 'XMP:DateCreated'),
+        DocumentID: getValue(metadata, 'XMP:DocumentID'),
+        OriginalDocumentID: getValue(metadata, 'XMP:OriginalDocumentID'),
+        InstanceID: getValue(metadata, 'XMP:InstanceID'),
+        Marked: metadata['XMP:Marked'] || false,
+        RawFileName: getValue(metadata, 'XMP:RawFileName'),
+        Version: getNumValue(metadata, 'XMP:Version'),
+        ProcessVersion: getNumValue(metadata, 'XMP:ProcessVersion'),
+        WhiteBalance: getValue(metadata, 'XMP:WhiteBalance'),
+        ColorTemperature: getNumValue(metadata, 'XMP:ColorTemperature'),
+        Tint: getNumValue(metadata, 'XMP:Tint'),
+        Saturation: getValue(metadata, 'XMP:Saturation'),
+        Sharpness: getNumValue(metadata, 'XMP:Sharpness'),
+        LuminanceSmoothing: getNumValue(metadata, 'XMP:LuminanceSmoothing'),
+        ColorNoiseReduction: getNumValue(metadata, 'XMP:ColorNoiseReduction'),
+        VignetteAmount: getNumValue(metadata, 'XMP:VignetteAmount'),
+        ShadowTint: getNumValue(metadata, 'XMP:ShadowTint'),
+        RedHue: getNumValue(metadata, 'XMP:RedHue'),
+        RedSaturation: getNumValue(metadata, 'XMP:RedSaturation'),
+        GreenHue: getNumValue(metadata, 'XMP:GreenHue'),
+        GreenSaturation: getNumValue(metadata, 'XMP:GreenSaturation'),
+        BlueHue: getNumValue(metadata, 'XMP:BlueHue'),
+        BlueSaturation: getNumValue(metadata, 'XMP:BlueSaturation'),
+        Vibrance: getValue(metadata, 'XMP:Vibrance'),
+        HueAdjustmentRed: getNumValue(metadata, 'XMP:HueAdjustmentRed'),
+        HueAdjustmentOrange: getNumValue(metadata, 'XMP:HueAdjustmentOrange'),
+        HueAdjustmentYellow: getNumValue(metadata, 'XMP:HueAdjustmentYellow'),
+        HueAdjustmentGreen: getNumValue(metadata, 'XMP:HueAdjustmentGreen'),
+        HueAdjustmentAqua: getNumValue(metadata, 'XMP:HueAdjustmentAqua'),
+        HueAdjustmentBlue: getNumValue(metadata, 'XMP:HueAdjustmentBlue'),
+        HueAdjustmentPurple: getNumValue(metadata, 'XMP:HueAdjustmentPurple'),
+        HueAdjustmentMagenta: getNumValue(metadata, 'XMP:HueAdjustmentMagenta'),
+        SaturationAdjustmentRed: getNumValue(metadata, 'XMP:SaturationAdjustmentRed'),
+        SaturationAdjustmentOrange: getNumValue(metadata, 'XMP:SaturationAdjustmentOrange'),
+        SaturationAdjustmentYellow: getNumValue(metadata, 'XMP:SaturationAdjustmentYellow'),
+        SaturationAdjustmentGreen: getNumValue(metadata, 'XMP:SaturationAdjustmentGreen'),
+        SaturationAdjustmentAqua: getNumValue(metadata, 'XMP:SaturationAdjustmentAqua'),
+        SaturationAdjustmentBlue: getNumValue(metadata, 'XMP:SaturationAdjustmentBlue'),
+        SaturationAdjustmentPurple: getNumValue(metadata, 'XMP:SaturationAdjustmentPurple'),
+        SaturationAdjustmentMagenta: getNumValue(metadata, 'XMP:SaturationAdjustmentMagenta'),
+        LuminanceAdjustmentRed: getNumValue(metadata, 'XMP:LuminanceAdjustmentRed'),
+        LuminanceAdjustmentOrange: getNumValue(metadata, 'XMP:LuminanceAdjustmentOrange'),
+        LuminanceAdjustmentYellow: getNumValue(metadata, 'XMP:LuminanceAdjustmentYellow'),
+        LuminanceAdjustmentGreen: getNumValue(metadata, 'XMP:LuminanceAdjustmentGreen'),
+        LuminanceAdjustmentAqua: getNumValue(metadata, 'XMP:LuminanceAdjustmentAqua'),
+        LuminanceAdjustmentBlue: getNumValue(metadata, 'XMP:LuminanceAdjustmentBlue'),
+        LuminanceAdjustmentPurple: getNumValue(metadata, 'XMP:LuminanceAdjustmentPurple'),
+        LuminanceAdjustmentMagenta: getNumValue(metadata, 'XMP:LuminanceAdjustmentMagenta'),
+        SplitToningShadowHue: getNumValue(metadata, 'XMP:SplitToningShadowHue'),
+        SplitToningShadowSaturation: getNumValue(metadata, 'XMP:SplitToningShadowSaturation'),
+        SplitToningHighlightHue: getNumValue(metadata, 'XMP:SplitToningHighlightHue'),
+        SplitToningHighlightSaturation: getNumValue(metadata, 'XMP:SplitToningHighlightSaturation'),
+        SplitToningBalance: getNumValue(metadata, 'XMP:SplitToningBalance'),
+        ParametricShadows: getNumValue(metadata, 'XMP:ParametricShadows'),
+        ParametricDarks: getNumValue(metadata, 'XMP:ParametricDarks'),
+        ParametricLights: getNumValue(metadata, 'XMP:ParametricLights'),
+        ParametricHighlights: getNumValue(metadata, 'XMP:ParametricHighlights'),
+        ParametricShadowSplit: getNumValue(metadata, 'XMP:ParametricShadowSplit'),
+        ParametricMidtoneSplit: getNumValue(metadata, 'XMP:ParametricMidtoneSplit'),
+        ParametricHighlightSplit: getNumValue(metadata, 'XMP:ParametricHighlightSplit'),
+        SharpenRadius: getValue(metadata, 'XMP:SharpenRadius'),
+        SharpenDetail: getNumValue(metadata, 'XMP:SharpenDetail'),
+        SharpenEdgeMasking: getNumValue(metadata, 'XMP:SharpenEdgeMasking'),
+        PostCropVignetteAmount: getNumValue(metadata, 'XMP:PostCropVignetteAmount'),
+        GrainAmount: getNumValue(metadata, 'XMP:GrainAmount'),
+        LuminanceNoiseReductionDetail: getNumValue(metadata, 'XMP:LuminanceNoiseReductionDetail'),
+        ColorNoiseReductionDetail: getNumValue(metadata, 'XMP:ColorNoiseReductionDetail'),
+        LuminanceNoiseReductionContrast: getNumValue(metadata, 'XMP:LuminanceNoiseReductionContrast'),
+        ColorNoiseReductionSmoothness: getNumValue(metadata, 'XMP:ColorNoiseReductionSmoothness'),
+        Creator: getValue(metadata, 'XMP:Creator'),
+        CreatorWorkEmail: getValue(metadata, 'XMP:CreatorWorkEmail'),
+        CreatorWorkURL: getValue(metadata, 'XMP:CreatorWorkURL'),
+        CreatorContactInfo: getValue(metadata, 'XMP:CreatorContactInfo'),
+        CreatorCity: getValue(metadata, 'XMP:CreatorCity'),
+        CreatorCountry: getValue(metadata, 'XMP:CreatorCountry'),
+        CreatorAddress: getValue(metadata, 'XMP:CreatorAddress'),
+        CreatorPostalCode: getValue(metadata, 'XMP:CreatorPostalCode'),
+        CreatorRegion: getValue(metadata, 'XMP:CreatorRegion'),
+        ArtworkOrObject: getValue(metadata, 'XMP:ArtworkOrObject'),
+        LocationShown: getValue(metadata, 'XMP:LocationShown'),
+        LocationCreated: getValue(metadata, 'XMP:LocationCreated'),
+        RightsUsageTerms: getValue(metadata, 'XMP:RightsUsageTerms'),
+        WebStatement: getValue(metadata, 'XMP:WebStatement'),
+        LicensorURL: getValue(metadata, 'XMP:LicensorURL'),
+        LicensorName: getValue(metadata, 'XMP:LicensorName'),
+        LicensorID: getValue(metadata, 'XMP:LicensorID'),
+        LicensorCity: getValue(metadata, 'XMP:LicensorCity'),
+        LicensorCountry: getValue(metadata, 'XMP:LicensorCountry'),
+        LicensorEmail: getValue(metadata, 'XMP:LicensorEmail'),
+        LicensorTelephone: getValue(metadata, 'XMP:LicensorTelephone'),
+        LicensorPostalCode: getValue(metadata, 'XMP:LicensorPostalCode'),
+        LicensorRegion: getValue(metadata, 'XMP:LicensorRegion'),
+      },
+      Photoshop: {
+        XResolution: getNumValue(metadata, 'Photoshop:XResolution'),
+        DisplayedUnitsX: getValue(metadata, 'Photoshop:DisplayedUnitsX'),
+        YResolution: getNumValue(metadata, 'Photoshop:YResolution'),
+        DisplayedUnitsY: getValue(metadata, 'Photoshop:DisplayedUnitsY'),
+        PhotoshopQuality: getNumValue(metadata, 'Photoshop:PhotoshopQuality'),
+        PhotoshopFormat: getValue(metadata, 'Photoshop:PhotoshopFormat'),
+        ProgressiveScans: getValue(metadata, 'Photoshop:ProgressiveScans'),
+        CopyrightFlag: metadata['Photoshop:CopyrightFlag'] || false,
+        GlobalAngle: getNumValue(metadata, 'Photoshop:GlobalAngle'),
+        GlobalAltitude: getNumValue(metadata, 'Photoshop:GlobalAltitude'),
+        PrintScale: getNumValue(metadata, 'Photoshop:PrintScale'),
+        PixelAspectRatio: getNumValue(metadata, 'Photoshop:PixelAspectRatio'),
+        AuthorsPosition: getValue(metadata, 'Photoshop:AuthorsPosition'),
+        CaptionWriter: getValue(metadata, 'Photoshop:CaptionWriter'),
+        Category: getValue(metadata, 'Photoshop:Category'),
+        City: getValue(metadata, 'Photoshop:City'),
+        Country: getValue(metadata, 'Photoshop:Country'),
+        DateCreated: getValue(metadata, 'Photoshop:DateCreated'),
+        Headline: getValue(metadata, 'Photoshop:Headline'),
+        Instructions: getValue(metadata, 'Photoshop:Instructions'),
+        Source: getValue(metadata, 'Photoshop:Source'),
+        State: getValue(metadata, 'Photoshop:State'),
+        SupplementalCategories: getValue(metadata, 'Photoshop:SupplementalCategories'),
+        TransmissionReference: getValue(metadata, 'Photoshop:TransmissionReference'),
+        Urgency: getValue(metadata, 'Photoshop:Urgency'),
       },
       ICC_Profile: {
-        ProfileCMMType: metadata.ICC_Profile?.ProfileCMMType || '',
-        ProfileVersion: metadata.ICC_Profile?.ProfileVersion || '',
-        ProfileClass: metadata.ICC_Profile?.ProfileClass || '',
-        ColorSpaceData: metadata.ICC_Profile?.ColorSpaceData || '',
-        ProfileConnectionSpace: metadata.ICC_Profile?.ProfileConnectionSpace || '',
-        ProfileDateTime: metadata.ICC_Profile?.ProfileDateTime || '',
-        ProfileFileSignature: metadata.ICC_Profile?.ProfileFileSignature || '',
-        PrimaryPlatform: metadata.ICC_Profile?.PrimaryPlatform || '',
-        CMMFlags: metadata.ICC_Profile?.CMMFlags || '',
-        DeviceManufacturer: metadata.ICC_Profile?.DeviceManufacturer || '',
-        DeviceModel: metadata.ICC_Profile?.DeviceModel || '',
-        DeviceAttributes: metadata.ICC_Profile?.DeviceAttributes || '',
-        RenderingIntent: metadata.ICC_Profile?.RenderingIntent || '',
-        ConnectionSpaceIlluminant: metadata.ICC_Profile?.ConnectionSpaceIlluminant || '',
-        ProfileCreator: metadata.ICC_Profile?.ProfileCreator || '',
-        ProfileID: metadata.ICC_Profile?.ProfileID || 0,
-        ProfileDescription: metadata.ICC_Profile?.ProfileDescription || '',
-        MediaWhitePoint: metadata.ICC_Profile?.MediaWhitePoint || '',
-        MediaBlackPoint: metadata.ICC_Profile?.MediaBlackPoint || ''
-      },
-      APP14: {
-        DCTEncodeVersion: metadata.APP14?.DCTEncodeVersion || 0,
-        APP14Flags0: metadata.APP14?.APP14Flags0 || '',
-        APP14Flags1: metadata.APP14?.APP14Flags1 || '',
-        ColorTransform: metadata.APP14?.ColorTransform || ''
+        ProfileCMMType: getValue(metadata, 'ICC_Profile:ProfileCMMType'),
+        ProfileVersion: getValue(metadata, 'ICC_Profile:ProfileVersion'),
+        ProfileClass: getValue(metadata, 'ICC_Profile:ProfileClass'),
+        ColorSpaceData: getValue(metadata, 'ICC_Profile:ColorSpaceData'),
+        ProfileConnectionSpace: getValue(metadata, 'ICC_Profile:ProfileConnectionSpace'),
+        ProfileDateTime: getValue(metadata, 'ICC_Profile:ProfileDateTime'),
+        ProfileFileSignature: getValue(metadata, 'ICC_Profile:ProfileFileSignature'),
+        PrimaryPlatform: getValue(metadata, 'ICC_Profile:PrimaryPlatform'),
+        CMMFlags: getValue(metadata, 'ICC_Profile:CMMFlags'),
+        DeviceManufacturer: getValue(metadata, 'ICC_Profile:DeviceManufacturer'),
+        DeviceModel: getValue(metadata, 'ICC_Profile:DeviceModel'),
+        DeviceAttributes: getValue(metadata, 'ICC_Profile:DeviceAttributes'),
+        RenderingIntent: getValue(metadata, 'ICC_Profile:RenderingIntent'),
+        ConnectionSpaceIlluminant: getValue(metadata, 'ICC_Profile:ConnectionSpaceIlluminant'),
+        ProfileCreator: getValue(metadata, 'ICC_Profile:ProfileCreator'),
+        ProfileID: getNumValue(metadata, 'ICC_Profile:ProfileID'),
+        ProfileDescription: getValue(metadata, 'ICC_Profile:ProfileDescription'),
+        MediaWhitePoint: getValue(metadata, 'ICC_Profile:MediaWhitePoint'),
+        MediaBlackPoint: getValue(metadata, 'ICC_Profile:MediaBlackPoint'),
+        RedTRC: getValue(metadata, 'ICC_Profile:RedTRC'),
+        GreenTRC: getValue(metadata, 'ICC_Profile:GreenTRC'),
+        BlueTRC: getValue(metadata, 'ICC_Profile:BlueTRC'),
+        RedMatrixColumn: getValue(metadata, 'ICC_Profile:RedMatrixColumn'),
+        GreenMatrixColumn: getValue(metadata, 'ICC_Profile:GreenMatrixColumn'),
+        BlueMatrixColumn: getValue(metadata, 'ICC_Profile:BlueMatrixColumn')
       },
       Composite: {
-        Aperture: metadata.Composite?.Aperture || 0,
-        ImageSize: metadata.Composite?.ImageSize || '',
-        Megapixels: metadata.Composite?.Megapixels || 0,
-        ShutterSpeed: metadata.Composite?.ShutterSpeed || '',
-        GPSAltitude: metadata.Composite?.GPSAltitude || '',
-        GPSLatitude: metadata.Composite?.GPSLatitude || '',
-        GPSLongitude: metadata.Composite?.GPSLongitude || '',
-        DateTimeCreated: metadata.Composite?.DateTimeCreated || '',
-        FocalLength35efl: metadata.Composite?.FocalLength35efl || '',
-        GPSPosition: metadata.Composite?.GPSPosition || '',
-        LightValue: metadata.Composite?.LightValue || 0
+        Aperture: getNumValue(metadata, 'Composite:Aperture'),
+        ImageSize: getValue(metadata, 'Composite:ImageSize'),
+        Megapixels: getNumValue(metadata, 'Composite:Megapixels'),
+        ShutterSpeed: getValue(metadata, 'Composite:ShutterSpeed'),
+        GPSAltitude: getValue(metadata, 'Composite:GPSAltitude'),
+        GPSLatitude: getValue(metadata, 'Composite:GPSLatitude'),
+        GPSLongitude: getValue(metadata, 'Composite:GPSLongitude'),
+        DateTimeCreated: getValue(metadata, 'Composite:DateTimeCreated'),
+        FocalLength35efl: getValue(metadata, 'Composite:FocalLength35efl'),
+        GPSPosition: getValue(metadata, 'Composite:GPSPosition'),
+        LightValue: getNumValue(metadata, 'Composite:LightValue')
+      },
+      CameraSettings: {
+        CameraType: getValue(metadata, 'CameraType'),
+        FirmwareVersion: getValue(metadata, 'FirmwareVersion'),
+        ShutterCount: getNumValue(metadata, 'ShutterCount'),
+        BatteryLevel: getValue(metadata, 'BatteryLevel'),
+        ImageStabilization: getValue(metadata, 'ImageStabilization'),
+        AutoFocusPoints: getValue(metadata, 'AFPoints'),
+        AFPointsInFocus: getValue(metadata, 'AFPointsInFocus'),
+        FocusMode: getValue(metadata, 'FocusMode'),
+        FocusDistance: getValue(metadata, 'FocusDistance'),
+        DriveMode: getValue(metadata, 'DriveMode'),
+        ShootingMode: getValue(metadata, 'ShootingMode'),
+        BracketMode: getValue(metadata, 'BracketMode'),
+        ImageQuality: getValue(metadata, 'Quality'),
+        NoiseReduction: getValue(metadata, 'NoiseReduction'),
+        FlashMode: getValue(metadata, 'FlashMode'),
+        FlashType: getValue(metadata, 'FlashType'),
+        FlashExposureComp: getValue(metadata, 'FlashExposureComp'),
+        WBMode: getValue(metadata, 'WBMode'),
+        WBTemperature: getNumValue(metadata, 'WBTemperature'),
+        LensID: getValue(metadata, 'LensID'),
+        LensFirmware: getValue(metadata, 'LensFirmware'),
+        MinFocalLength: getValue(metadata, 'MinFocalLength'),
+        MaxFocalLength: getValue(metadata, 'MaxFocalLength'),
+        MaxAperture: getValue(metadata, 'MaxAperture'),
+        MinAperture: getValue(metadata, 'MinAperture'),
+        ImageFormat: getValue(metadata, 'ImageFormat'),
+        SensorSize: getValue(metadata, 'SensorSize'),
+        SensorType: getValue(metadata, 'SensorType')
+      },
+      ColorProfile: {
+        ProfileName: getValue(metadata, 'ProfileName'),
+        ProfileCopyright: getValue(metadata, 'ProfileCopyright'),
+        ProfileCalibrationDateTime: getValue(metadata, 'ProfileCalibrationDateTime'),
+        GamutTag: getValue(metadata, 'GamutTag'),
+        DeviceModelDesc: getValue(metadata, 'DeviceModelDesc'),
+        ViewingCondDesc: getValue(metadata, 'ViewingCondDesc'),
+        Luminance: getValue(metadata, 'Luminance'),
+        MeasurementObserver: getValue(metadata, 'MeasurementObserver'),
+        MeasurementBacking: getValue(metadata, 'MeasurementBacking'),
+        MeasurementGeometry: getValue(metadata, 'MeasurementGeometry'),
+        MeasurementFlare: getValue(metadata, 'MeasurementFlare'),
+        MeasurementIlluminant: getValue(metadata, 'MeasurementIlluminant'),
+        TechnologyInformation: getValue(metadata, 'TechnologyInformation'),
+        ChromaticAdaptation: getValue(metadata, 'ChromaticAdaptation'),
+        ColorimetricIntent: getValue(metadata, 'ColorimetricIntent')
+      },
+      GPSDetailed: {
+        GPSVersionID: getValue(metadata, 'GPSVersionID'),
+        GPSLatitudeRef: getValue(metadata, 'GPSLatitudeRef'),
+        GPSLatitudeDegrees: getValue(metadata, 'GPSLatitude'),
+        GPSLongitudeRef: getValue(metadata, 'GPSLongitudeRef'),
+        GPSLongitudeDegrees: getValue(metadata, 'GPSLongitude'),
+        GPSAltitudeRef: getValue(metadata, 'GPSAltitudeRef'),
+        GPSAltitudeMeter: getValue(metadata, 'GPSAltitude'),
+        GPSTimeStamp: getValue(metadata, 'GPSTimeStamp'),
+        GPSDateStamp: getValue(metadata, 'GPSDateStamp'),
+        GPSSatellites: getValue(metadata, 'GPSSatellites'),
+        GPSStatus: getValue(metadata, 'GPSStatus'),
+        GPSMeasureMode: getValue(metadata, 'GPSMeasureMode'),
+        GPSDOP: getValue(metadata, 'GPSDOP'),
+        GPSSpeedRef: getValue(metadata, 'GPSSpeedRef'),
+        GPSSpeed: getValue(metadata, 'GPSSpeed'),
+        GPSTrackRef: getValue(metadata, 'GPSTrackRef'),
+        GPSTrack: getValue(metadata, 'GPSTrack'),
+        GPSImgDirectionRef: getValue(metadata, 'GPSImgDirectionRef'),
+        GPSImgDirection: getValue(metadata, 'GPSImgDirection'),
+        GPSMapDatum: getValue(metadata, 'GPSMapDatum'),
+        GPSDestLatitudeRef: getValue(metadata, 'GPSDestLatitudeRef'),
+        GPSDestLatitude: getValue(metadata, 'GPSDestLatitude'),
+        GPSDestLongitudeRef: getValue(metadata, 'GPSDestLongitudeRef'),
+        GPSDestLongitude: getValue(metadata, 'GPSDestLongitude'),
+        GPSDestBearingRef: getValue(metadata, 'GPSDestBearingRef'),
+        GPSDestBearing: getValue(metadata, 'GPSDestBearing'),
+        GPSDestDistanceRef: getValue(metadata, 'GPSDestDistanceRef'),
+        GPSDestDistance: getValue(metadata, 'GPSDestDistance'),
+        GPSProcessingMethod: getValue(metadata, 'GPSProcessingMethod'),
+        GPSAreaInformation: getValue(metadata, 'GPSAreaInformation'),
+        GPSDifferential: getValue(metadata, 'GPSDifferential'),
+        GPSHPositioningError: getValue(metadata, 'GPSHPositioningError')
+      },
+      Rights: {
+        Copyright: getValue(metadata, 'Copyright'),
+        CopyrightNotice: getValue(metadata, 'CopyrightNotice'),
+        CopyrightStatus: getValue(metadata, 'CopyrightStatus'),
+        CopyrightFlag: getValue(metadata, 'CopyrightFlag'),
+        RightsUsageTerms: getValue(metadata, 'RightsUsageTerms'),
+        WebStatement: getValue(metadata, 'WebStatement'),
+        LicenseType: getValue(metadata, 'LicenseType'),
+        LicenseURL: getValue(metadata, 'LicenseURL'),
+        RightsOwner: getValue(metadata, 'RightsOwner'),
+        CreatorContactInfo: getValue(metadata, 'CreatorContactInfo'),
+        CreatorWorkURL: getValue(metadata, 'CreatorWorkURL'),
+        Attribution: getValue(metadata, 'Attribution'),
+        AttributionURL: getValue(metadata, 'AttributionURL'),
+        ContentProviderName: getValue(metadata, 'ContentProviderName'),
+        ContentProviderID: getValue(metadata, 'ContentProviderID'),
+        CopyrightOwnerID: getValue(metadata, 'CopyrightOwnerID'),
+        CopyrightOwnerName: getValue(metadata, 'CopyrightOwnerName'),
+        UsageRights: getValue(metadata, 'UsageRights'),
+        UsageTerms: getValue(metadata, 'UsageTerms'),
+        Restrictions: getValue(metadata, 'Restrictions'),
+        ExpirationDate: getValue(metadata, 'ExpirationDate'),
+        LicenseEndDate: getValue(metadata, 'LicenseEndDate'),
+        TermsAndConditionsURL: getValue(metadata, 'TermsAndConditionsURL')
       }
     };
+
+    // Log the raw metadata for debugging
+    console.log('Raw metadata:', JSON.stringify(metadata, null, 2));
 
     return metadataObject;
 
   } catch (error) {
-    // Improved error logging
-    console.error('Metadata extraction error details:', {
-      error: error.message,
-      fileName: tempFilePath,
-      imageUrl: url
-    });
-    
-    // Clean up more explicitly
-    if (et) {
-      try {
-        await et.end();
-      } catch (cleanupError) {
-        console.error('Error cleaning up ExifTool:', cleanupError);
-      }
-    }
-    
+    console.error('Metadata extraction error:', error);
     throw error;
   } finally {
-    // Clean up temporary file
     if (tempFilePath) {
       try {
         await unlink(tempFilePath);
+        console.log('Temporary file cleaned up');
       } catch (unlinkError) {
         console.error('Error deleting temporary file:', unlinkError);
       }
     }
   }
 }
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-    responseLimit: false
-  },
-};
 
-// In the API handler section:
-
-export default async function handler(req, res) {
+const handler = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -393,39 +515,33 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    // Add timeout for the entire request
     const requestTimeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Request timed out')), 180000); // 3 minutes total timeout
+      setTimeout(() => reject(new Error('Request timed out')), 180000);
     });
 
-    // In the API handler section, modify the processRequest function:
+    const processRequest = async () => {
+      const verification = await verifyTurnstileToken(turnstileToken);
+      if (!verification.success) {
+        throw new Error('Invalid CAPTCHA');
+      }
 
-const processRequest = async () => {
-  // Verify CAPTCHA and process image as before...
-  const verification = await verifyTurnstileToken(turnstileToken);
-  if (!verification.success) {
-    throw new Error('Invalid CAPTCHA');
-  }
+      const imageResponse = await fetch(url, {
+        timeout: 30000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      });
 
-  const imageResponse = await fetch(url, {
-    timeout: 30000, // 30 second timeout for fetch
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
-  });
+      if (!imageResponse.ok) {
+        throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
+      }
 
-  if (!imageResponse.ok) {
-    throw new Error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
-  }
+      const arrayBuffer = await imageResponse.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
 
-  // Convert arrayBuffer to Buffer
-  const arrayBuffer = await imageResponse.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  
-  return await extractMetadata(buffer, url);
-};
+      return await extractMetadata(buffer, url);
+    };
 
-    // Race between request processing and timeout
     const metadata = await Promise.race([processRequest(), requestTimeout]);
     return res.status(200).json(metadata);
 
@@ -436,23 +552,21 @@ const processRequest = async () => {
       url: req.body?.url
     });
 
-    // More specific error handling
     const errorResponse = {
       error: 'Request failed',
       details: error.message,
       code: error.message.includes('timed out') ? 'TIMEOUT_ERROR' : 'PROCESSING_ERROR'
     };
 
-    const statusCode = 
+    const statusCode =
       error.message.includes('timed out') ? 408 :
-      error.message.includes('Invalid CAPTCHA') ? 400 :
-      error.message.includes('Failed to fetch') ? 404 :
-      500;
+        error.message.includes('Invalid CAPTCHA') ? 400 :
+          error.message.includes('Failed to fetch') ? 404 :
+            500;
 
     return res.status(statusCode).json(errorResponse);
 
   } finally {
-    // Ensure cleanup
     if (et) {
       try {
         await et.end();
@@ -461,10 +575,18 @@ const processRequest = async () => {
       }
     }
   }
-}
+};
 
-// Export necessary functions for testing
-export {
+module.exports = {
   extractMetadata,
-  verifyTurnstileToken
+  verifyTurnstileToken,
+  default: handler,
+  config: {
+    api: {
+      bodyParser: {
+        sizeLimit: '10mb',
+      },
+      responseLimit: false
+    }
+  }
 };
