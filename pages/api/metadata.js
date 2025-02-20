@@ -24,38 +24,38 @@ async function extractMetadata(buffer, url) {
   try {
     console.log('Starting metadata extraction...');
 
-    // Load tags with expanded data and all options enabled
-    const tags = await ExifReader.load(buffer, {
-      expanded: true,
-      includeUnknown: true,  // Include unknown tags
-      async: true,           // Use async loading
-      length: true,          // Include data lengths
-      mergeOutput: false     // Keep sections separate
-    });
-
-    console.log('Raw tags:', JSON.stringify(tags, null, 2));
+    // Load tags with expanded data
+    const tags = await ExifReader.load(buffer);
+    console.log('Tags loaded, structure:', Object.keys(tags));
 
     // Helper function to safely get values
-    const getValue = (obj, key, defaultValue = "N/A") => {
+    const getValue = (tags, key, defaultValue = "N/A") => {
       try {
-        if (!obj || !obj[key]) return defaultValue;
-        if (obj[key].description) return obj[key].description;
-        if (obj[key].value) return obj[key].value;
-        if (Array.isArray(obj[key])) return obj[key].join(', ');
-        return String(obj[key]) || defaultValue;
+        const tag = tags[key];
+        if (!tag) return defaultValue;
+
+        // Handle different tag value formats
+        if (tag.description) return tag.description;
+        if (tag.value && Array.isArray(tag.value)) return tag.value.join(', ');
+        if (tag.value) return tag.value;
+        return defaultValue;
       } catch (e) {
+        console.warn(`Error getting value for ${key}:`, e);
         return defaultValue;
       }
     };
 
     // Helper function for numeric values
-    const getNumValue = (obj, key, defaultValue = 0) => {
+    const getNumValue = (tags, key, defaultValue = 0) => {
       try {
-        const value = getValue(obj, key, null);
-        if (value === null) return defaultValue;
-        const num = parseFloat(value);
-        return isNaN(num) ? defaultValue : num;
+        const tag = tags[key];
+        if (!tag) return defaultValue;
+
+        const value = tag.value || tag.description;
+        if (Array.isArray(value)) return parseFloat(value[0]) || defaultValue;
+        return parseFloat(value) || defaultValue;
       } catch (e) {
+        console.warn(`Error getting numeric value for ${key}:`, e);
         return defaultValue;
       }
     };
@@ -65,106 +65,67 @@ async function extractMetadata(buffer, url) {
         Url: url,
         FileName: path.basename(url),
         FileSize: buffer.length,
-        ImageWidth: getNumValue(tags.file, 'ImageWidth'),
-        ImageHeight: getNumValue(tags.file, 'ImageHeight'),
-        MIMEType: getValue(tags.file, 'MIMEType'),
-        FileType: getValue(tags.file, 'FileType'),
-        FileTypeExtension: getValue(tags.file, 'FileTypeExtension'),
-        ColorSpace: getValue(tags.file, 'ColorSpace'),
-        ImageSize: getValue(tags.file, 'ImageSize')
+        ImageWidth: getNumValue(tags, 'Image Width'),
+        ImageHeight: getNumValue(tags, 'Image Height'),
+        MIMEType: getValue(tags, 'MIMEType'),
+        FileType: getValue(tags, 'FileType'),
+        ColorSpace: getValue(tags, 'ColorSpace')
       },
       EXIF: {
         // Camera Info
-        Make: getValue(tags.exif, 'Make'),
-        Model: getValue(tags.exif, 'Model'),
-        Software: getValue(tags.exif, 'Software'),
-        LensMake: getValue(tags.exif, 'LensMake'),
-        LensModel: getValue(tags.exif, 'LensModel'),
+        Make: getValue(tags, 'Make'),
+        Model: getValue(tags, 'Model'),
+        Software: getValue(tags, 'Software'),
+        LensMake: getValue(tags, 'Lens Make'),
+        LensModel: getValue(tags, 'Lens Model'),
 
         // Timestamps
-        ModifyDate: getValue(tags.exif, 'ModifyDate'),
-        DateTimeOriginal: getValue(tags.exif, 'DateTimeOriginal'),
-        CreateDate: getValue(tags.exif, 'CreateDate'),
-        DigitalCreationDate: getValue(tags.exif, 'DigitalCreationDate'),
+        ModifyDate: getValue(tags, 'Modify Date'),
+        DateTimeOriginal: getValue(tags, 'Date/Time Original'),
+        CreateDate: getValue(tags, 'Create Date'),
+        DigitalCreationDate: getValue(tags, 'Digital Creation Date'),
 
         // Image Info
-        ImageDescription: getValue(tags.exif, 'ImageDescription'),
-        Artist: getValue(tags.exif, 'Artist'),
-        Copyright: getValue(tags.exif, 'Copyright'),
+        ImageDescription: getValue(tags, 'Image Description'),
+        Artist: getValue(tags, 'Artist'),
+        Copyright: getValue(tags, 'Copyright'),
 
         // Camera Settings
-        ExposureTime: getValue(tags.exif, 'ExposureTime'),
-        FNumber: getValue(tags.exif, 'FNumber'),
-        ExposureProgram: getValue(tags.exif, 'ExposureProgram'),
-        ISO: getValue(tags.exif, 'ISO'),
-        SensitivityType: getValue(tags.exif, 'SensitivityType'),
-        ExposureCompensation: getValue(tags.exif, 'ExposureCompensation'),
-        FocalLength: getValue(tags.exif, 'FocalLength'),
-        FocalLengthIn35mmFormat: getValue(tags.exif, 'FocalLengthIn35mmFormat'),
-        MaxApertureValue: getValue(tags.exif, 'MaxApertureValue'),
-        MeteringMode: getValue(tags.exif, 'MeteringMode'),
-        LightSource: getValue(tags.exif, 'LightSource'),
-        Flash: getValue(tags.exif, 'Flash'),
-        FlashMode: getValue(tags.exif, 'FlashMode'),
-        WhiteBalance: getValue(tags.exif, 'WhiteBalance'),
-        DigitalZoomRatio: getValue(tags.exif, 'DigitalZoomRatio'),
-        SceneCaptureType: getValue(tags.exif, 'SceneCaptureType'),
-        Contrast: getValue(tags.exif, 'Contrast'),
-        Saturation: getValue(tags.exif, 'Saturation'),
-        Sharpness: getValue(tags.exif, 'Sharpness'),
-        SubjectDistanceRange: getValue(tags.exif, 'SubjectDistanceRange'),
-
-        // GPS Data (if available)
-        GPSLatitude: getValue(tags.gps, 'GPSLatitude'),
-        GPSLongitude: getValue(tags.gps, 'GPSLongitude'),
-        GPSAltitude: getValue(tags.gps, 'GPSAltitude'),
-        GPSDateStamp: getValue(tags.gps, 'GPSDateStamp')
+        ExposureTime: getValue(tags, 'Exposure Time'),
+        FNumber: getValue(tags, 'F-Number'),
+        ExposureProgram: getValue(tags, 'Exposure Program'),
+        ISO: getValue(tags, 'ISO Speed Ratings'),
+        ExposureCompensation: getValue(tags, 'Exposure Compensation'),
+        FocalLength: getValue(tags, 'Focal Length'),
+        FocalLengthIn35mmFormat: getValue(tags, 'Focal Length In 35mm Format'),
+        MaxApertureValue: getValue(tags, 'Max Aperture Value'),
+        MeteringMode: getValue(tags, 'Metering Mode'),
+        LightSource: getValue(tags, 'Light Source'),
+        Flash: getValue(tags, 'Flash'),
+        WhiteBalance: getValue(tags, 'White Balance'),
+        DigitalZoomRatio: getValue(tags, 'Digital Zoom Ratio'),
+        SceneCaptureType: getValue(tags, 'Scene Capture Type'),
+        Contrast: getValue(tags, 'Contrast'),
+        Saturation: getValue(tags, 'Saturation'),
+        Sharpness: getValue(tags, 'Sharpness')
       },
       IPTC: {
-        Caption: getValue(tags.iptc, 'Caption'),
-        Headline: getValue(tags.iptc, 'Headline'),
-        Keywords: getValue(tags.iptc, 'Keywords'),
-        CopyrightNotice: getValue(tags.iptc, 'CopyrightNotice'),
-        Creator: getValue(tags.iptc, 'Creator'),
-        DateCreated: getValue(tags.iptc, 'DateCreated'),
-        Category: getValue(tags.iptc, 'Category'),
-        SupplementalCategories: getValue(tags.iptc, 'SupplementalCategories'),
-        Urgency: getValue(tags.iptc, 'Urgency'),
-        SubjectReference: getValue(tags.iptc, 'SubjectReference'),
-        City: getValue(tags.iptc, 'City'),
-        Country: getValue(tags.iptc, 'Country'),
-        Source: getValue(tags.iptc, 'Source'),
-        EditStatus: getValue(tags.iptc, 'EditStatus'),
-        ObjectName: getValue(tags.iptc, 'ObjectName')
+        Caption: getValue(tags, 'Caption/Abstract'),
+        Headline: getValue(tags, 'Headline'),
+        Keywords: getValue(tags, 'Keywords'),
+        CopyrightNotice: getValue(tags, 'Copyright Notice'),
+        Creator: getValue(tags, 'Creator'),
+        DateCreated: getValue(tags, 'Date Created'),
+        City: getValue(tags, 'City'),
+        Country: getValue(tags, 'Country'),
+        Source: getValue(tags, 'Source')
       },
-      XMP: {
-        // Core Properties
-        Creator: getValue(tags.xmp, 'Creator'),
-        Rights: getValue(tags.xmp, 'Rights'),
-        Title: getValue(tags.xmp, 'Title'),
-        Description: getValue(tags.xmp, 'Description'),
-        License: getValue(tags.xmp, 'WebStatement'),
-        UsageTerms: getValue(tags.xmp, 'UsageTerms'),
-
-        // Additional Properties
-        Rating: getValue(tags.xmp, 'Rating'),
-        Label: getValue(tags.xmp, 'Label'),
-        CreatorTool: getValue(tags.xmp, 'CreatorTool'),
-        Subject: getValue(tags.xmp, 'Subject'),
-        Format: getValue(tags.xmp, 'Format'),
-
-        // Rights Management
-        Owner: getValue(tags.xmp, 'Owner'),
-        CopyrightStatus: getValue(tags.xmp, 'CopyrightStatus'),
-        MarkedForAds: getValue(tags.xmp, 'MarkedForAds'),
-        WebStatement: getValue(tags.xmp, 'WebStatement'),
-        RightsUsageTerms: getValue(tags.xmp, 'RightsUsageTerms'),
-
-        // Location
-        Location: getValue(tags.xmp, 'Location'),
-        City: getValue(tags.xmp, 'City'),
-        State: getValue(tags.xmp, 'State'),
-        Country: getValue(tags.xmp, 'Country')
+      GPS: {
+        Latitude: getValue(tags, 'GPS Latitude'),
+        Longitude: getValue(tags, 'GPS Longitude'),
+        Altitude: getValue(tags, 'GPS Altitude'),
+        DateStamp: getValue(tags, 'GPS Date Stamp'),
+        TimeStamp: getValue(tags, 'GPS Time Stamp')
       }
     };
 
