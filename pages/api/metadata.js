@@ -32,34 +32,22 @@ async function verifyTurnstileToken(token) {
 
 async function extractMetadata(buffer, url) {
   let blobUrl = null;
-  let tempFilePath = null;
 
   try {
     console.log('Uploading to Vercel Blob...');
     const filename = `temp-${uuidv4()}${path.extname(url)}`;
 
-    // Upload to Vercel Blob
+    // Upload to Vercel Blob with metadata
     const { url: tempUrl } = await put(filename, buffer, {
       access: 'public',
       addRandomSuffix: true,
-      token: process.env.BLOB_READ_WRITE_TOKEN
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+      contentType: 'image/jpeg', // Add proper content type
+      cacheControl: 'no-store', // Prevent caching
     });
 
     blobUrl = tempUrl;
     console.log('File uploaded to:', blobUrl);
-
-    // Download blob to local temp file
-    console.log('Downloading blob...');
-    const blobResponse = await fetch(blobUrl);
-    if (!blobResponse.ok) {
-      throw new Error('Failed to download blob');
-    }
-    const blobBuffer = await blobResponse.arrayBuffer();
-
-    // Create local temp file
-    tempFilePath = path.join(os.tmpdir(), filename);
-    await writeFile(tempFilePath, Buffer.from(blobBuffer));
-    console.log('Blob downloaded to:', tempFilePath);
 
     // Use specific ExifTool options
     const exiftoolOptions = [
@@ -68,6 +56,8 @@ async function extractMetadata(buffer, url) {
       '-json',
       '-charset',
       'filename=utf8',
+      '-http',           // Enable HTTP support
+      '-ignoreMinorErrors', // Ignore minor errors
       '-FileSize',
       '-ImageSize',
       '-ImageDescription',
@@ -79,11 +69,11 @@ async function extractMetadata(buffer, url) {
       '-GPS:all'
     ];
 
-    const exifToolTimeout = 5000; // Reduced to 5 seconds
+    const exifToolTimeout = 10000; // Increased to 10 seconds for network operations
     console.log('Starting metadata extraction...');
 
     const metadata = await Promise.race([
-      exiftoolProcess.read(tempFilePath, exiftoolOptions),
+      exiftoolProcess.readUrl(blobUrl, exiftoolOptions), // Use readUrl instead of read
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('ExifTool extraction timeout')), exifToolTimeout)
       )
@@ -133,21 +123,13 @@ async function extractMetadata(buffer, url) {
     console.error('Metadata extraction error:', error);
     throw error;
   } finally {
-    // Cleanup both blob and temp file
+    // Cleanup blob
     if (blobUrl) {
       try {
         await del(blobUrl);
         console.log('Temporary blob deleted');
       } catch (error) {
         console.error('Blob cleanup error:', error);
-      }
-    }
-    if (tempFilePath) {
-      try {
-        await unlink(tempFilePath);
-        console.log('Temporary file cleaned up');
-      } catch (error) {
-        console.error('File cleanup error:', error);
       }
     }
   }
