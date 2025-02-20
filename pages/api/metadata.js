@@ -26,35 +26,38 @@ async function extractMetadata(buffer, url) {
     const tags = await ExifReader.load(buffer);
     console.log('Tags loaded, structure:', Object.keys(tags));
 
-    // Helper function to safely get values
-    const getValue = (section, key) => {
+    // Helper function to get tag info
+    const getTagInfo = (section, key) => {
       try {
-        if (!section || !section[key]) return "N/A";
-        if (section[key].description) return section[key].description;
-        if (section[key].value) {
-          if (Array.isArray(section[key].value)) {
-            return section[key].value.join(', ');
-          }
-          return section[key].value;
-        }
-        return "N/A";
+        if (!section || !section[key]) return null;
+        const tag = section[key];
+        return {
+          id: tag.id,
+          value: tag.value,
+          description: tag.description,
+          rawValue: Array.isArray(tag.value) ? tag.value : [tag.value]
+        };
       } catch (e) {
-        console.warn(`Error getting value for ${key}:`, e);
-        return "N/A";
+        console.warn(`Error getting tag info for ${key}:`, e);
+        return null;
       }
     };
 
-    // Helper function for numeric values
-    const getNumValue = (section, key) => {
-      try {
-        if (!section || !section[key]) return 0;
-        const value = section[key].value;
-        if (Array.isArray(value)) return parseInt(value[0]) || 0;
-        return parseInt(value) || 0;
-      } catch (e) {
-        console.warn(`Error getting numeric value for ${key}:`, e);
-        return 0;
+    // Process each section
+    const processSection = (section, keys) => {
+      const result = {};
+      if (!section) return result;
+
+      // Get all keys from the section if none provided
+      const tagsToProcess = keys || Object.keys(section);
+
+      for (const key of tagsToProcess) {
+        const tagInfo = getTagInfo(section, key);
+        if (tagInfo) {
+          result[key] = tagInfo;
+        }
       }
+      return result;
     };
 
     return {
@@ -62,46 +65,18 @@ async function extractMetadata(buffer, url) {
         Url: url,
         FileName: path.basename(url),
         FileSize: buffer.length,
-        ImageWidth: getNumValue(tags.file, 'ImageWidth'),
-        ImageHeight: getNumValue(tags.file, 'ImageHeight'),
-        BitsPerSample: getValue(tags.file, 'BitsPerSample'),
-        ColorComponents: getValue(tags.file, 'ColorComponents'),
-        FileType: getValue(tags.file, 'FileType'),
-        Subsampling: getValue(tags.file, 'Subsampling')
+        ...processSection(tags.file, [
+          'Bits Per Sample',
+          'Image Height',
+          'Image Width',
+          'Color Components',
+          'Subsampling',
+          'FileType'
+        ])
       },
-      EXIF: {
-        ImageDescription: getValue(tags.exif, 'ImageDescription'),
-        Artist: getValue(tags.exif, 'Artist'),
-        Copyright: getValue(tags.exif, 'Copyright'),
-        XResolution: getValue(tags.exif, 'XResolution'),
-        YResolution: getValue(tags.exif, 'YResolution'),
-        ResolutionUnit: getValue(tags.exif, 'ResolutionUnit'),
-        YCbCrPositioning: getValue(tags.exif, 'YCbCrPositioning')
-      },
-      IPTC: {
-        SpecialInstructions: getValue(tags.iptc, 'Special Instructions'),
-        DateCreated: getValue(tags.iptc, 'Date Created'),
-        TimeCreated: getValue(tags.iptc, 'Time Created'),
-        Byline: getValue(tags.iptc, 'By-line'),
-        Headline: getValue(tags.iptc, 'Headline'),
-        Credit: getValue(tags.iptc, 'Credit'),
-        CopyrightNotice: getValue(tags.iptc, 'Copyright Notice'),
-        Caption: getValue(tags.iptc, 'Caption/Abstract')
-      },
-      XMP: {
-        Creator: getValue(tags.xmp, 'creator'),
-        Description: getValue(tags.xmp, 'description'),
-        Rights: getValue(tags.xmp, 'rights'),
-        Credit: getValue(tags.xmp, 'Credit'),
-        DateCreated: getValue(tags.xmp, 'DateCreated'),
-        Headline: getValue(tags.xmp, 'Headline'),
-        Instructions: getValue(tags.xmp, 'Instructions'),
-        CopyrightOwner: getValue(tags.xmp, 'CopyrightOwner'),
-        ImageCreator: getValue(tags.xmp, 'ImageCreator'),
-        Licensor: getValue(tags.xmp, 'Licensor'),
-        UsageTerms: getValue(tags.xmp, 'UsageTerms'),
-        WebStatement: getValue(tags.xmp, 'WebStatement')
-      }
+      EXIF: processSection(tags.exif),
+      IPTC: processSection(tags.iptc),
+      XMP: processSection(tags.xmp)
     };
 
   } catch (error) {

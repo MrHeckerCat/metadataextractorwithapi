@@ -274,3 +274,49 @@
   font-size: 0.9em;
   margin-top: 20px;
 }
+
+.tagInfo {
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+.tagDescription {
+  font-weight: 500;
+  color: #212529;
+  margin-bottom: 4px;
+}
+
+.tagId {
+  font-size: 0.8em;
+  color: #6c757d;
+  margin-bottom: 2px;
+}
+
+.tagValue {
+  font-family: monospace;
+  font-size: 0.9em;
+  color: #495057;
+  word-break: break-all;
+  background: #e9ecef;
+  padding: 4px;
+  border-radius: 2px;
+}
+
+.metadataField {
+  background: white;
+  padding: 12px;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 8px;
+}
+
+.fieldName {
+  font-weight: bold;
+  color: #343a40;
+  display: block;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 4px;
+}

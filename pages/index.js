@@ -13,47 +13,51 @@ const FeedbackMessage = () => {
 };
 
 const MetadataDisplay = ({ metadata }) => {
-  const sections = {
-    File: {
-      title: "File Information",
-      fields: ["FileName", "FileSize", "ImageWidth", "ImageHeight", "FileType", "BitsPerSample", "ColorComponents", "Subsampling"]
-    },
-    EXIF: {
-      title: "EXIF Data",
-      fields: ["ImageDescription", "Artist", "Copyright", "XResolution", "YResolution", "ResolutionUnit", "YCbCrPositioning"]
-    },
-    IPTC: {
-      title: "IPTC Data",
-      fields: ["SpecialInstructions", "DateCreated", "TimeCreated", "Byline", "Headline", "Credit", "CopyrightNotice", "Caption"]
-    },
-    XMP: {
-      title: "XMP Data",
-      fields: ["Creator", "Description", "Rights", "Credit", "DateCreated", "Headline", "Instructions", "CopyrightOwner", "ImageCreator", "Licensor", "UsageTerms", "WebStatement"]
-    }
+  const formatValue = (tagInfo) => {
+    if (!tagInfo) return "N/A";
+    return {
+      description: tagInfo.description || "N/A",
+      value: Array.isArray(tagInfo.value) ?
+        tagInfo.value.join(', ') :
+        String(tagInfo.value),
+      id: tagInfo.id || "N/A",
+      rawValue: tagInfo.rawValue || []
+    };
   };
 
-  const formatValue = (value) => {
-    if (value === undefined || value === null) return "N/A";
-    if (typeof value === "number") return value.toString();
-    return value;
+  const renderTagValue = (tagInfo) => {
+    if (!tagInfo) return null;
+    const formatted = formatValue(tagInfo);
+
+    return (
+      <div className={styles.tagInfo}>
+        <div className={styles.tagDescription}>
+          {formatted.description}
+        </div>
+        {formatted.id && (
+          <div className={styles.tagId}>
+            ID: {formatted.id}
+          </div>
+        )}
+        <div className={styles.tagValue}>
+          Raw: {JSON.stringify(formatted.rawValue)}
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className={styles.metadataContainer}>
-      {Object.entries(sections).map(([section, { title, fields }]) => (
+      {Object.entries(metadata).map(([section, data]) => (
         <div key={section} className={styles.metadataSection}>
-          <h3>{title}</h3>
+          <h3>{section}</h3>
           <div className={styles.metadataGrid}>
-            {fields.map(field => {
-              const value = metadata[section]?.[field];
-              if (!value || value === "N/A") return null;
-              return (
-                <div key={field} className={styles.metadataField}>
-                  <span className={styles.fieldName}>{field}:</span>
-                  <span className={styles.fieldValue}>{formatValue(value)}</span>
-                </div>
-              );
-            })}
+            {Object.entries(data).map(([key, value]) => (
+              <div key={key} className={styles.metadataField}>
+                <span className={styles.fieldName}>{key}</span>
+                {renderTagValue(value)}
+              </div>
+            ))}
           </div>
         </div>
       ))}
