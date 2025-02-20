@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@vercel/analytics": "1.0.1",
+    "@vercel/blob": "^0.10.0",
     "@vercel/og": "^0.5.8",
     "exifreader": "^4.26.1",
     "next": "^12.3.4",

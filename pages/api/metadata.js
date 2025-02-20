@@ -1,10 +1,5 @@
 const path = require('path');
 const ExifReader = require('exifreader');
-const { v4: uuidv4 } = require('uuid');
-
-// Remove unused imports
-const probe = require('probe-image-size');
-const iptc = require('node-iptc');
 
 async function verifyTurnstileToken(token) {
   try {
@@ -55,6 +50,7 @@ async function extractMetadata(buffer, url) {
       }
     };
 
+    // Create metadata object
     return {
       File: {
         Url: url,
@@ -164,7 +160,6 @@ export default async function handler(req, res) {
   }
 }
 
-// API configuration
 export const config = {
   api: {
     bodyParser: {
