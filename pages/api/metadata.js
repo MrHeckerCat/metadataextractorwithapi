@@ -6,6 +6,7 @@ const ExifReader = require('exifreader');
 const probe = require('probe-image-size');
 const iptc = require('node-iptc');
 const os = require('os');
+const { writeFile, unlink } = require('fs/promises');
 
 // Initialize ExifTool with minimal options
 const exiftoolProcess = exiftool;
@@ -31,6 +32,7 @@ async function verifyTurnstileToken(token) {
 
 async function extractMetadata(buffer, url) {
   let blobUrl = null;
+  let tempFilePath = null;
 
   try {
     console.log('Uploading to Vercel Blob...');
@@ -46,7 +48,20 @@ async function extractMetadata(buffer, url) {
     blobUrl = tempUrl;
     console.log('File uploaded to:', blobUrl);
 
-    // Use specific ExifTool options to get only what we need
+    // Download blob to local temp file
+    console.log('Downloading blob...');
+    const blobResponse = await fetch(blobUrl);
+    if (!blobResponse.ok) {
+      throw new Error('Failed to download blob');
+    }
+    const blobBuffer = await blobResponse.arrayBuffer();
+
+    // Create local temp file
+    tempFilePath = path.join(os.tmpdir(), filename);
+    await writeFile(tempFilePath, Buffer.from(blobBuffer));
+    console.log('Blob downloaded to:', tempFilePath);
+
+    // Use specific ExifTool options
     const exiftoolOptions = [
       '-fast',
       '-fast2',
@@ -64,11 +79,11 @@ async function extractMetadata(buffer, url) {
       '-GPS:all'
     ];
 
-    const exifToolTimeout = 8000; // 8 seconds
+    const exifToolTimeout = 5000; // Reduced to 5 seconds
     console.log('Starting metadata extraction...');
 
     const metadata = await Promise.race([
-      exiftoolProcess.read(blobUrl, exiftoolOptions),
+      exiftoolProcess.read(tempFilePath, exiftoolOptions),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('ExifTool extraction timeout')), exifToolTimeout)
       )
@@ -118,13 +133,21 @@ async function extractMetadata(buffer, url) {
     console.error('Metadata extraction error:', error);
     throw error;
   } finally {
+    // Cleanup both blob and temp file
     if (blobUrl) {
       try {
-        // Delete the temporary blob
         await del(blobUrl);
         console.log('Temporary blob deleted');
       } catch (error) {
         console.error('Blob cleanup error:', error);
+      }
+    }
+    if (tempFilePath) {
+      try {
+        await unlink(tempFilePath);
+        console.log('Temporary file cleaned up');
+      } catch (error) {
+        console.error('File cleanup error:', error);
       }
     }
   }
