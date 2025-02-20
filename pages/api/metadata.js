@@ -8,7 +8,7 @@ const iptc = require('node-iptc');
 const os = require('os');
 const { writeFile, unlink } = require('fs/promises');
 
-// Initialize ExifTool with minimal options
+// Initialize ExifTool
 const exiftoolProcess = exiftool;
 
 async function verifyTurnstileToken(token) {
@@ -37,27 +37,26 @@ async function extractMetadata(buffer, url) {
     console.log('Uploading to Vercel Blob...');
     const filename = `temp-${uuidv4()}${path.extname(url)}`;
 
-    // Upload to Vercel Blob with metadata
+    // Upload to Vercel Blob
     const { url: tempUrl } = await put(filename, buffer, {
       access: 'public',
       addRandomSuffix: true,
       token: process.env.BLOB_READ_WRITE_TOKEN,
-      contentType: 'image/jpeg', // Add proper content type
-      cacheControl: 'no-store', // Prevent caching
+      contentType: 'image/jpeg',
+      cacheControl: 'no-store'
     });
 
     blobUrl = tempUrl;
     console.log('File uploaded to:', blobUrl);
 
-    // Use specific ExifTool options
+    // ExifTool options
     const exiftoolOptions = [
       '-fast',
       '-fast2',
       '-json',
-      '-charset',
-      'filename=utf8',
-      '-http',           // Enable HTTP support
-      '-ignoreMinorErrors', // Ignore minor errors
+      '-charset', 'filename=utf8',
+      '-http',
+      '-ignoreMinorErrors',
       '-FileSize',
       '-ImageSize',
       '-ImageDescription',
@@ -69,17 +68,10 @@ async function extractMetadata(buffer, url) {
       '-GPS:all'
     ];
 
-    const exifToolTimeout = 10000; // Increased to 10 seconds for network operations
-    console.log('Starting metadata extraction...');
+    console.log('Starting metadata extraction from URL:', blobUrl);
+    const metadata = await exiftoolProcess.readUrl(blobUrl, exiftoolOptions);
+    console.log('Raw metadata:', metadata);
 
-    const metadata = await Promise.race([
-      exiftoolProcess.readUrl(blobUrl, exiftoolOptions), // Use readUrl instead of read
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('ExifTool extraction timeout')), exifToolTimeout)
-      )
-    ]);
-
-    // Create a simplified metadata object
     const metadataObject = {
       File: {
         Url: url,
@@ -123,13 +115,12 @@ async function extractMetadata(buffer, url) {
     console.error('Metadata extraction error:', error);
     throw error;
   } finally {
-    // Cleanup blob
     if (blobUrl) {
       try {
         await del(blobUrl);
-        console.log('Temporary blob deleted');
+        console.log('Blob deleted:', blobUrl);
       } catch (error) {
-        console.error('Blob cleanup error:', error);
+        console.error('Blob deletion error:', error);
       }
     }
   }
