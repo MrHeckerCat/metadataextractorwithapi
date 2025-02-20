@@ -45,16 +45,15 @@ async function extractMetadata(buffer, url) {
     };
 
     // Helper function for numeric values
-    const getNumValue = (section, key, defaultValue = 0) => {
+    const getNumValue = (section, key) => {
       try {
-        const tag = section[key];
-        if (!tag) return defaultValue;
-        const value = tag.value || tag.description;
-        if (Array.isArray(value)) return parseFloat(value[0]) || defaultValue;
-        return parseFloat(value) || defaultValue;
+        if (!section || !section[key]) return 0;
+        const value = section[key].value;
+        if (Array.isArray(value)) return parseInt(value[0]) || 0;
+        return parseInt(value) || 0;
       } catch (e) {
         console.warn(`Error getting numeric value for ${key}:`, e);
-        return defaultValue;
+        return 0;
       }
     };
 
@@ -63,10 +62,10 @@ async function extractMetadata(buffer, url) {
         Url: url,
         FileName: path.basename(url),
         FileSize: buffer.length,
-        ImageWidth: getNumValue(tags.file, 'Image Width'),
-        ImageHeight: getNumValue(tags.file, 'Image Height'),
-        BitsPerSample: getValue(tags.file, 'Bits Per Sample'),
-        ColorComponents: getValue(tags.file, 'Color Components'),
+        ImageWidth: getNumValue(tags.file, 'ImageWidth'),
+        ImageHeight: getNumValue(tags.file, 'ImageHeight'),
+        BitsPerSample: getValue(tags.file, 'BitsPerSample'),
+        ColorComponents: getValue(tags.file, 'ColorComponents'),
         FileType: getValue(tags.file, 'FileType'),
         Subsampling: getValue(tags.file, 'Subsampling')
       },
