@@ -24,7 +24,7 @@ export default function Layout({ children }) {
         <div className={styles.socialIcons}>
           {/* Add social media icons here */}
         </div>
-        <p>© 2024 Image Metadata Extractor. All rights reserved.</p>
+        <p>© 2025 Image Metadata Extractor. All rights reserved.</p>
         <Link href="/terms">
           <a>Terms of Use</a>
         </Link>{' '}
