@@ -2,12 +2,12 @@ import Head from 'next/head';
 import Link from 'next/link';
 import styles from '../styles/layout.module.css';
 import { Analytics } from '@vercel/analytics/react';
-import { inject } from '@vercel/speed-insights';
-
-// Initialize Speed Insights
-inject();
+import { SpeedInsights } from '@vercel/speed-insights/react';
+import { useRouter } from 'next/router';
 
 export default function Layout({ children }) {
+  const router = useRouter();
+
   return (
     <div className={styles.pageWrapper}>
       <Head>
@@ -37,6 +37,7 @@ export default function Layout({ children }) {
         </Link>
       </footer>
       <Analytics />
+      <SpeedInsights route={router.pathname} />
     </div>
   );
 }
