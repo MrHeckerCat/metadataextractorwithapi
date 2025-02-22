@@ -10,6 +10,7 @@
     "@vercel/analytics": "1.0.1",
     "@vercel/blob": "^0.10.0",
     "@vercel/og": "^0.5.8",
+    "@vercel/speed-insights": "^0.1.1",
     "exifreader": "^4.26.1",
     "exiftool-vendored": "^16.5.1",
     "next": "^12.3.4",

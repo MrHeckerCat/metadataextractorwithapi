@@ -2,6 +2,10 @@ import Head from 'next/head';
 import Link from 'next/link';
 import styles from '../styles/layout.module.css';
 import { Analytics } from '@vercel/analytics/react';
+import { inject } from '@vercel/speed-insights';
+
+// Initialize Speed Insights
+inject();
 
 export default function Layout({ children }) {
   return (
